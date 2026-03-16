@@ -77,12 +77,18 @@ export class LLMAgent {
    * @param {string} parentTaskId - ID of the current task (embedded in synthetic chatIds)
    * @param {Object<string, Function>} queueFunctions - Map of task-type → queue function
    */
-  enableDelegationTools(parentTaskId, queueFunctions, tempPrefix) {
+  enableDelegationTools(
+    parentTaskId,
+    queueFunctions,
+    tempPrefix,
+    analysisRoot = null,
+  ) {
     this.delegationToolExecutor = new DelegationToolExecutor(
       this.workingDirectory,
       parentTaskId,
       queueFunctions,
       tempPrefix,
+      analysisRoot,
     );
     logger.info("Delegation tools enabled for agent session", {
       component: "LLMAgent",

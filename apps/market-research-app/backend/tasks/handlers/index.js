@@ -85,6 +85,7 @@ export function createRegistry(orchestrator) {
             }),
         },
         config.delegationTempPrefix,
+        config.allowedOutputPrefix,
       );
 
       if (config.apiKeys.braveSearch) {

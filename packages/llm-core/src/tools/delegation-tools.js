@@ -36,7 +36,7 @@ export const DELEGATION_TOOLS = [
     description: `Queue a follow-up task for a specialized agent based on your findings.
 
 How to use:
-  1. Use write_file to create a delegation request file under .code-analysis/temp/delegation-requests/ describing exactly what the delegated agent should do and why (include relevant context from your analysis).
+  1. Use write_file to create a delegation request file under the temp delegation directory specified by the task instructions/system prompt, describing exactly what the delegated agent should do and why (include relevant context from your analysis).
   2. Call delegate_task with the path to that file, the target task type, and any required params.
 
 The delegation request file content becomes the user message (or briefing) for the delegated agent — treat it like a detailed chat message.`,
@@ -49,7 +49,7 @@ The delegation request file content becomes the user message (or briefing) for t
       requestFile: {
         type: "string",
         description:
-          "Relative path (from project root) to the delegation request file you wrote. Must be under .code-analysis/temp/. The file content becomes the delegated agent's user message.",
+          "Relative path (from project root) to the delegation request file you wrote. It must be under the temp prefix allowed by the current task. The file content becomes the delegated agent's user message.",
       },
       params: {
         type: "object",
@@ -71,10 +71,16 @@ The delegation request file content becomes the user message (or briefing) for t
  *   the merged params and competitorBriefing from the request file.
  *
  * @example
- * const executor = new DelegationToolExecutor(projectRoot, parentTaskId, {
- *   "edit-documentation": queueEditDocumentationTask,
- *   "market-research-competitor": queueMarketResearchCompetitorTask,
- * });
+ * const executor = new DelegationToolExecutor(
+ *   projectRoot,
+ *   parentTaskId,
+ *   {
+ *     "edit-documentation": queueEditDocumentationTask,
+ *     "market-research-competitor": queueMarketResearchCompetitorTask,
+ *   },
+ *   ".code-analysis/temp",
+ *   ".code-analysis",
+ * );
  */
 export class DelegationToolExecutor {
   /**
@@ -83,17 +89,20 @@ export class DelegationToolExecutor {
    * @param {Object<string, Function>} queueFunctions
    *   Map of task type string → queue function
    * @param {string} [tempPrefix=".code-analysis/temp"] - Prefix under which delegation request files must live
+   * @param {string} [analysisRoot] - Root analysis/output directory used for helper files like synthetic chat history
    */
   constructor(
     projectRoot,
     parentTaskId,
     queueFunctions,
     tempPrefix = ".code-analysis/temp",
+    analysisRoot = null,
   ) {
     this.projectRoot = projectRoot;
     this.parentTaskId = parentTaskId;
     this.queueFunctions = queueFunctions;
     this.tempPrefix = tempPrefix;
+    this.analysisRoot = analysisRoot || tempPrefix.replace(/\/temp$/, "");
   }
 
   /**
@@ -148,7 +157,7 @@ export class DelegationToolExecutor {
       };
     }
 
-    // Security: requestFile must live under .code-analysis/temp/
+    // Security: requestFile must live under the configured temp prefix.
     const normalized = path.normalize(requestFile).replace(/\\/g, "/");
     if (!normalized.startsWith(`${this.tempPrefix}/`)) {
       return {
@@ -311,7 +320,7 @@ export class DelegationToolExecutor {
   async _writeSyntheticChatHistory({ domainId, sectionType, chatId, content }) {
     const chatHistoryDir = path.join(
       this.projectRoot,
-      ".code-analysis",
+      this.analysisRoot,
       "tasks",
       "chat-history",
     );
