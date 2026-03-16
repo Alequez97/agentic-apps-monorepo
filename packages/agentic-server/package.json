@@ -1,0 +1,12 @@
+{
+  "name": "@jfs/agentic-server",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Task queue engine and orchestration for agentic apps. No HTTP, no sockets — pure Node.js.",
+  "main": "src/index.js",
+  "dependencies": {
+    "@jfs/llm-core": "*",
+    "uuid": "^9.0.0",
+    "winston": "^3.11.0"
+  }
+}

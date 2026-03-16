@@ -1,0 +1,10 @@
+{
+  "name": "agentic-apps-monorepo",
+  "private": true,
+  "workspaces": [
+    "packages/llm-core",
+    "packages/agentic-server",
+    "apps/market-research-app/backend",
+    "apps/market-research-app/frontend"
+  ]
+}

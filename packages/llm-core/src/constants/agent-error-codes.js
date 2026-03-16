@@ -1,0 +1,9 @@
+/**
+ * Agent selection/runtime error code constants
+ */
+
+export const AGENT_ERROR_CODES = {
+  UNSUPPORTED_AGENT: "UNSUPPORTED_AGENT",
+  AGENT_UNAVAILABLE: "AGENT_UNAVAILABLE",
+  TASK_CONFIG_MISSING: "TASK_CONFIG_MISSING",
+};

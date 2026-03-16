@@ -1,0 +1,14 @@
+{
+  "name": "@jfs/llm-core",
+  "version": "0.1.0",
+  "description": "Provider-agnostic LLM conversation loop, clients, and tool executors",
+  "type": "module",
+  "main": "src/index.js",
+  "exports": {
+    ".": "./src/index.js"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.32.1",
+    "openai": "^4.52.0"
+  }
+}

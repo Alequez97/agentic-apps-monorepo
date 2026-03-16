@@ -1,0 +1,236 @@
+import {
+  Box,
+  Button,
+  HStack,
+  Skeleton,
+  SkeletonText,
+  Text,
+  VStack,
+} from "@chakra-ui/react";
+import {
+  BarChart2,
+  ChevronRight,
+  Clock,
+  FileText,
+  Inbox,
+  Search,
+} from "lucide-react";
+
+function formatDate(ts) {
+  return new Date(ts).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+function formatTime(ts) {
+  return new Date(ts).toLocaleTimeString("en-US", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function HistoryRow({ entry, isLast, onOpen }) {
+  return (
+    <Box
+      py={3.5}
+      px={4}
+      borderBottomWidth={isLast ? "0" : "1px"}
+      borderColor="#f1f5f9"
+      _hover={{ bg: "#f5f7ff" }}
+      transition="background 0.12s"
+      cursor="pointer"
+      onClick={onOpen}
+    >
+      <HStack gap={4} align="center" flexWrap="wrap">
+        <Box
+          w="32px"
+          h="32px"
+          borderRadius="8px"
+          bg="#eef2ff"
+          display="flex"
+          alignItems="center"
+          justifyContent="center"
+          flexShrink={0}
+        >
+          <Search size={14} color="#6366f1" strokeWidth={2} />
+        </Box>
+
+        <Box flex="1" minW={0}>
+          <Text
+            fontSize="13px"
+            fontWeight="600"
+            color="#0f172a"
+            truncate
+            mb={0.5}
+          >
+            {entry.idea || "Untitled analysis"}
+          </Text>
+          <HStack gap={2}>
+            <Clock size={11} color="#94a3b8" strokeWidth={2} />
+            <Text fontSize="11px" color="#94a3b8" fontWeight="500">
+              {formatDate(entry.completedAt)} · {formatTime(entry.completedAt)}
+            </Text>
+          </HStack>
+        </Box>
+
+        <HStack
+          gap={1.5}
+          bg="#f8fafc"
+          borderWidth="1px"
+          borderColor="#e2e8f0"
+          borderRadius="20px"
+          px={2.5}
+          py={1}
+          flexShrink={0}
+        >
+          <BarChart2 size={11} color="#6366f1" strokeWidth={2} />
+          <Text fontSize="11px" fontWeight="600" color="#374151">
+            {entry.competitorCount} competitors
+          </Text>
+        </HStack>
+
+        <HStack
+          gap={1}
+          bg="rgba(22,163,74,0.08)"
+          borderWidth="1px"
+          borderColor="rgba(22,163,74,0.25)"
+          borderRadius="20px"
+          px={2.5}
+          py={1}
+          flexShrink={0}
+        >
+          <Box w="5px" h="5px" borderRadius="50%" bg="#16a34a" />
+          <Text fontSize="11px" fontWeight="600" color="#15803d">
+            Complete
+          </Text>
+        </HStack>
+
+        <Box color="#c7d2fe" flexShrink={0}>
+          <ChevronRight size={15} strokeWidth={2.5} />
+        </Box>
+      </HStack>
+    </Box>
+  );
+}
+
+function EmptyHistory() {
+  return (
+    <Box py={12} textAlign="center">
+      <Box
+        w="48px"
+        h="48px"
+        borderRadius="12px"
+        bg="#f1f5f9"
+        display="flex"
+        alignItems="center"
+        justifyContent="center"
+        mx="auto"
+        mb={3}
+      >
+        <Inbox size={22} color="#94a3b8" strokeWidth={1.5} />
+      </Box>
+      <Text fontSize="14px" fontWeight="700" color="#374151" mb={1}>
+        No analyses yet
+      </Text>
+      <Text fontSize="13px" color="#94a3b8">
+        Run your first competitor analysis to see history here.
+      </Text>
+    </Box>
+  );
+}
+
+function HistoryLoading() {
+  return (
+    <Box>
+      {[0, 1, 2].map((i) => (
+        <Box
+          key={i}
+          py={3.5}
+          px={4}
+          borderBottomWidth={i === 2 ? "0" : "1px"}
+          borderColor="#f1f5f9"
+        >
+          <HStack gap={4} align="center">
+            <Skeleton w="32px" h="32px" borderRadius="8px" flexShrink={0} />
+            <Box flex="1" minW={0}>
+              <Skeleton h="13px" w="60%" mb={1.5} />
+              <Skeleton h="11px" w="35%" />
+            </Box>
+            <Skeleton h="24px" w="100px" borderRadius="20px" />
+          </HStack>
+        </Box>
+      ))}
+    </Box>
+  );
+}
+
+export function AnalysisHistory({ history, isLoading, onClear, onOpen }) {
+  return (
+    <Box
+      bg="white"
+      borderWidth="1px"
+      borderColor="#e2e8f0"
+      borderRadius="16px"
+      overflow="hidden"
+    >
+      <HStack
+        px={4}
+        py={3.5}
+        borderBottomWidth="1px"
+        borderColor="#f1f5f9"
+        justify="space-between"
+      >
+        <HStack gap={2}>
+          <Box color="#6366f1">
+            <FileText size={15} strokeWidth={2} />
+          </Box>
+          <Text fontSize="14px" fontWeight="700" color="#0f172a">
+            Analysis history
+          </Text>
+          {history.length > 0 && (
+            <Box bg="#eef2ff" borderRadius="20px" px={2} py={0.5}>
+              <Text fontSize="11px" fontWeight="700" color="#6366f1">
+                {history.length}
+              </Text>
+            </Box>
+          )}
+        </HStack>
+        {history.length > 0 && (
+          <Button
+            variant="ghost"
+            size="xs"
+            fontSize="11px"
+            fontWeight="500"
+            color="#94a3b8"
+            borderRadius="6px"
+            h="24px"
+            px={2}
+            _hover={{ bg: "#fef2f2", color: "#dc2626" }}
+            onClick={onClear}
+          >
+            Clear all
+          </Button>
+        )}
+      </HStack>
+
+      {isLoading && history.length === 0 ? (
+        <HistoryLoading />
+      ) : history.length === 0 ? (
+        <EmptyHistory />
+      ) : (
+        <VStack gap={0} align="stretch">
+          {history.map((entry, i) => (
+            <HistoryRow
+              key={entry.id}
+              entry={entry}
+              isLast={i === history.length - 1}
+              onOpen={() => onOpen(entry)}
+            />
+          ))}
+        </VStack>
+      )}
+    </Box>
+  );
+}

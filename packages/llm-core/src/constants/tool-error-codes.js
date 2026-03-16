@@ -1,0 +1,35 @@
+/**
+ * Error codes for file tool operations
+ */
+
+export const TOOL_ERROR_CODES = {
+  // Security errors
+  ACCESS_DENIED: "ACCESS_DENIED",
+  PERMISSION_DENIED: "PERMISSION_DENIED",
+  READ_PROTECTED: "READ_PROTECTED",
+
+  // Filesystem errors
+  FILE_NOT_FOUND: "FILE_NOT_FOUND",
+  NOT_A_FILE: "NOT_A_FILE",
+  NOT_A_DIRECTORY: "NOT_A_DIRECTORY",
+  FILE_TOO_LARGE: "FILE_TOO_LARGE",
+  READ_ERROR: "READ_ERROR",
+  WRITE_ERROR: "WRITE_ERROR",
+
+  // Validation errors
+  INVALID_LINE_RANGE: "INVALID_LINE_RANGE",
+  INVALID_POSITION: "INVALID_POSITION",
+  INVALID_PATTERN: "INVALID_PATTERN",
+  FILE_EXISTS: "FILE_EXISTS",
+
+  // Internal errors
+  UNKNOWN_TOOL: "UNKNOWN_TOOL",
+  NOT_IMPLEMENTED: "NOT_IMPLEMENTED",
+};
+
+export const TOOL_ERROR_TYPES = {
+  SECURITY: "security",
+  FILESYSTEM: "filesystem",
+  VALIDATION: "validation",
+  INTERNAL: "internal",
+};
