@@ -68,7 +68,7 @@ export function AppNavbar({ onLogoClick, right }) {
           display={{ base: "flex", lg: "none" }}
           flexDirection="column"
           position="fixed"
-          top="100px"
+          top="48px"
           left="0"
           right="0"
           zIndex="99"

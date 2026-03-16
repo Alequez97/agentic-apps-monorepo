@@ -57,7 +57,7 @@ export async function queueMarketResearchSummaryTask(
       reasoningEffort: taskConfig.reasoningEffort,
     },
     systemInstructionFile: "market-research-summary.md",
-    outputFile: `market-research/${sessionId}/opportunity.json`,
+    outputFile: `${config.allowedOutputPrefix}/market-research/${sessionId}/opportunity.json`,
     progressFile,
   };
 

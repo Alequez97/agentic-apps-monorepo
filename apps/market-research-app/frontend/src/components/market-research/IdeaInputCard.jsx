@@ -1,17 +1,30 @@
-import { Box, Button, HStack, Text, Textarea, VStack } from "@chakra-ui/react";
+import { Box, Button, Text, Textarea, VStack } from "@chakra-ui/react";
 import { Search } from "lucide-react";
+import { useAuthStore } from "../../store/useAuthStore";
 import { useMarketResearchStore } from "../../store/useMarketResearchStore";
 import { RegionSelector } from "./RegionSelector";
 
 export function IdeaInputCard() {
+  const user = useAuthStore((s) => s.user);
+  const setReturnStep = useAuthStore((s) => s.setReturnStep);
   const idea = useMarketResearchStore((s) => s.idea);
   const setIdea = useMarketResearchStore((s) => s.setIdea);
   const regions = useMarketResearchStore((s) => s.regions);
   const startAnalysis = useMarketResearchStore((s) => s.startAnalysis);
+  const setStep = useMarketResearchStore((s) => s.setStep);
 
-  // null = Worldwide (valid), array with items = valid, empty array = invalid
   const regionValid = regions === null || regions.length > 0;
   const canSubmit = idea.trim() && regionValid;
+
+  const handleAnalyze = () => {
+    if (!user) {
+      setReturnStep("input");
+      setStep("login");
+      return;
+    }
+
+    startAnalysis();
+  };
 
   return (
     <Box
@@ -36,7 +49,7 @@ export function IdeaInputCard() {
           <Textarea
             value={idea}
             onChange={(e) => setIdea(e.target.value)}
-            placeholder="Describe your business idea…"
+            placeholder="Describe your business idea..."
             minH="120px"
             fontSize="13px"
             borderColor="#cbd5e1"
@@ -52,7 +65,7 @@ export function IdeaInputCard() {
         <RegionSelector />
 
         <Text fontSize="11px" color="#94a3b8">
-          💡 Live market intelligence · competitive landscape · ~5 min
+          Account required - live market intelligence - ~5 min
         </Text>
 
         <Button
@@ -72,12 +85,12 @@ export function IdeaInputCard() {
             boxShadow: "0 4px 12px rgba(99,102,241,.4)",
           }}
           disabled={!canSubmit}
-          onClick={startAnalysis}
+          onClick={handleAnalyze}
           w="full"
           opacity={!canSubmit ? 0.5 : 1}
         >
           <Search size={16} strokeWidth={2.5} />
-          Analyze Market
+          {user ? "Analyze Market" : "Sign in to analyze"}
         </Button>
       </VStack>
     </Box>

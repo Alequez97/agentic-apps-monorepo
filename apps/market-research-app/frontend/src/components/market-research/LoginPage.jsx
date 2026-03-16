@@ -1,4 +1,4 @@
-import { Box, Button, Text, VStack, HStack } from "@chakra-ui/react";
+import { Box, Button, HStack, Text, VStack } from "@chakra-ui/react";
 import { GoogleLogin } from "@react-oauth/google";
 import { ArrowLeft, Search } from "lucide-react";
 import { useAuthStore } from "../../store/useAuthStore";
@@ -7,12 +7,10 @@ import { toaster } from "../ui/toaster";
 
 export function LoginPage() {
   const signInWithGoogle = useAuthStore((s) => s.signInWithGoogle);
-  const claimSession = useAuthStore((s) => s.claimSession);
   const returnStep = useAuthStore((s) => s.returnStep);
   const setReturnStep = useAuthStore((s) => s.setReturnStep);
 
   const setStep = useMarketResearchStore((s) => s.setStep);
-  const sessionId = useMarketResearchStore((s) => s.sessionId);
 
   const handleBack = () => {
     setStep(returnStep ?? "landing");
@@ -22,15 +20,11 @@ export function LoginPage() {
   const handleGoogleSuccess = async (credentialResponse) => {
     try {
       await signInWithGoogle(credentialResponse.credential);
-
-      // Claim the current anonymous session if one exists
-      if (sessionId) {
-        await claimSession(sessionId);
-        toaster.create({
-          title: "Report saved to your account",
-          type: "success",
-        });
-      }
+      toaster.create({
+        title: "Signed in",
+        description: "Your account is ready on the free plan.",
+        type: "success",
+      });
 
       setStep(returnStep ?? "landing");
       setReturnStep(null);
@@ -71,7 +65,6 @@ export function LoginPage() {
         p={8}
       >
         <VStack gap={6} align="center">
-          {/* Logo */}
           <HStack gap={2}>
             <Box
               w="36px"
@@ -95,7 +88,6 @@ export function LoginPage() {
             </Text>
           </HStack>
 
-          {/* Headline */}
           <VStack gap={1} textAlign="center">
             <Text
               fontSize="20px"
@@ -103,14 +95,14 @@ export function LoginPage() {
               color="#0f172a"
               letterSpacing="-0.02em"
             >
-              Save your reports
+              Sign in to continue
             </Text>
             <Text fontSize="13px" color="#64748b" lineHeight="1.6" maxW="280px">
-              Sign in to save your analysis and access it from any device.
+              Google sign-in is required before any market research request.
+              Every registered user starts on the free plan.
             </Text>
           </VStack>
 
-          {/* Google button */}
           <Box display="flex" justifyContent="center" w="100%">
             <Box overflow="hidden" borderRadius="12px" display="inline-flex">
               <GoogleLogin
@@ -126,12 +118,12 @@ export function LoginPage() {
             </Box>
           </Box>
 
-          {/* Value props */}
           <VStack gap={1.5} align="start" w="100%" px={1}>
             {[
               "Access all past reports across devices",
+              "Every new account starts on the free plan",
               "Your data is never shared",
-              "Free — no credit card required",
+              "Free plan - no credit card required",
             ].map((item) => (
               <HStack key={item} gap={2}>
                 <Box
@@ -148,7 +140,6 @@ export function LoginPage() {
             ))}
           </VStack>
 
-          {/* Back link */}
           <Button
             variant="ghost"
             size="sm"

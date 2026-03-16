@@ -30,61 +30,6 @@ export const useSocketStore = create((set, get) => ({
 
     socket.on("connect", () => {
       set({ socketConnected: true });
-
-      useTaskProgressStore
-        .getState()
-        .loadTasks()
-        .then(() => {
-          // Restore competitor stubs from loaded tasks after a page reload.
-          const mrStore = useMarketResearchStore.getState();
-          const storeSessionId = mrStore.sessionId;
-          if (storeSessionId) {
-            const { progressByTaskId } = useTaskProgressStore.getState();
-            const competitorEntries = [];
-            const hasRunningInitial = [...progressByTaskId.values()].some(
-              (e) =>
-                e.type === TASK_TYPES.MARKET_RESEARCH_INITIAL &&
-                (e.status === "running" || e.status === "pending"),
-            );
-            const hasRunningSummary = [...progressByTaskId.values()].some(
-              (e) =>
-                e.type === TASK_TYPES.MARKET_RESEARCH_SUMMARY &&
-                (e.status === "running" || e.status === "pending"),
-            );
-
-            for (const [taskId, entry] of progressByTaskId) {
-              if (
-                entry.type === TASK_TYPES.MARKET_RESEARCH_COMPETITOR &&
-                entry.competitorId &&
-                (entry.status === "running" || entry.status === "pending")
-              ) {
-                competitorEntries.push({ taskId, entry });
-              }
-            }
-
-            if (
-              competitorEntries.length > 0 ||
-              hasRunningInitial ||
-              hasRunningSummary
-            ) {
-              if (!mrStore.isAnalyzing) {
-                useMarketResearchStore.setState({
-                  isAnalyzing: true,
-                  step: "analysis",
-                });
-              }
-              for (const { taskId, entry } of competitorEntries) {
-                mrStore._addCompetitorStub({
-                  taskId,
-                  competitorId: entry.competitorId,
-                  competitorName: entry.competitorName,
-                  competitorUrl: entry.competitorUrl ?? "",
-                });
-              }
-              mrStore._syncSummaryStatus();
-            }
-          }
-        });
     });
 
     socket.on("disconnect", () => {
@@ -156,19 +101,19 @@ export const useSocketStore = create((set, get) => ({
           mrStore._syncSummaryStatus();
         }
       } else if (type === TASK_TYPES.MARKET_RESEARCH_INITIAL) {
-        const sessionId = data?.params?.sessionId;
-        const storeSessionId = useMarketResearchStore.getState().sessionId;
-        if (sessionId && sessionId === storeSessionId) {
+        const reportId = data?.params?.sessionId;
+        const storeReportId = useMarketResearchStore.getState().reportId;
+        if (reportId && reportId === storeReportId) {
           useMarketResearchStore.getState()._syncSummaryStatus();
         }
       } else if (type === TASK_TYPES.MARKET_RESEARCH_SUMMARY) {
-        const sessionId = data?.params?.sessionId;
+        const reportId = data?.params?.sessionId;
         const idea = data?.params?.idea;
-        const storeSessionId = useMarketResearchStore.getState().sessionId;
+        const storeReportId = useMarketResearchStore.getState().reportId;
 
-        if (sessionId && idea) {
+        if (reportId && idea) {
           useProfileStore.getState().addAnalysis({
-            id: sessionId,
+            id: reportId,
             idea,
             completedAt: Date.now(),
             competitorCount:
@@ -176,9 +121,9 @@ export const useSocketStore = create((set, get) => ({
           });
         }
 
-        if (sessionId && sessionId === storeSessionId) {
+        if (reportId && reportId === storeReportId) {
           if (useMarketResearchStore.getState().isAnalysisComplete) return;
-          getMarketResearchReport(sessionId)
+          getMarketResearchReport(reportId)
             .then((response) => {
               const report = response?.data?.report;
               if (report) {
@@ -204,9 +149,9 @@ export const useSocketStore = create((set, get) => ({
       }
 
       if (type === TASK_TYPES.MARKET_RESEARCH_INITIAL) {
-        const sessionId = data?.params?.sessionId;
-        const storeSessionId = useMarketResearchStore.getState().sessionId;
-        if (sessionId && sessionId === storeSessionId) {
+        const reportId = data?.params?.sessionId;
+        const storeReportId = useMarketResearchStore.getState().reportId;
+        if (reportId && reportId === storeReportId) {
           useMarketResearchStore.getState()._markAnalysisFailed();
         }
       } else if (type === TASK_TYPES.MARKET_RESEARCH_COMPETITOR) {
@@ -233,10 +178,10 @@ export const useSocketStore = create((set, get) => ({
     // ── Market research lifecycle events ─────────────────────────────────
 
     socket.on(SOCKET_EVENTS.MARKET_RESEARCH_COMPETITOR_FOUND, (data) => {
-      const { sessionId, taskId, competitorId, competitorName, competitorUrl } =
+      const { sessionId: reportId, taskId, competitorId, competitorName, competitorUrl } =
         data;
-      const storeSessionId = useMarketResearchStore.getState().sessionId;
-      if (sessionId && sessionId === storeSessionId) {
+      const storeReportId = useMarketResearchStore.getState().reportId;
+      if (reportId && reportId === storeReportId) {
         const mrStore = useMarketResearchStore.getState();
         mrStore._addCompetitorStub({
           taskId,
@@ -249,9 +194,9 @@ export const useSocketStore = create((set, get) => ({
     });
 
     socket.on(SOCKET_EVENTS.MARKET_RESEARCH_COMPETITOR_UPDATED, (data) => {
-      const { sessionId, competitor } = data ?? {};
+      const { sessionId: reportId, competitor } = data ?? {};
       const mrStore = useMarketResearchStore.getState();
-      if (!sessionId || sessionId !== mrStore.sessionId || !competitor?.id) {
+      if (!reportId || reportId !== mrStore.reportId || !competitor?.id) {
         return;
       }
       mrStore._mergeCompetitorProfile(competitor);
@@ -259,11 +204,11 @@ export const useSocketStore = create((set, get) => ({
     });
 
     socket.on(SOCKET_EVENTS.MARKET_RESEARCH_REPORT_READY, (data) => {
-      const { sessionId } = data ?? {};
+      const { sessionId: reportId } = data ?? {};
       const mrStore = useMarketResearchStore.getState();
-      if (!sessionId || sessionId !== mrStore.sessionId) return;
+      if (!reportId || reportId !== mrStore.reportId) return;
       if (mrStore.isAnalysisComplete) return;
-      getMarketResearchReport(sessionId)
+      getMarketResearchReport(reportId)
         .then((response) => {
           const report = response?.data?.report;
           if (report) {

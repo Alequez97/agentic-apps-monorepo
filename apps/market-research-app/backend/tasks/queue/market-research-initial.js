@@ -59,7 +59,7 @@ export async function queueMarketResearchInitialTask(
       reasoningEffort: taskConfig.reasoningEffort,
     },
     systemInstructionFile: "market-research-initial.md",
-    outputFile: `market-research/${sessionId}/report.json`,
+    outputFile: `${config.allowedOutputPrefix}/market-research/${sessionId}/report.json`,
     progressFile,
   };
 

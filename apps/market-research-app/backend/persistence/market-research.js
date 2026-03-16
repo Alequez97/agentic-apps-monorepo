@@ -61,14 +61,14 @@ async function ensureSessionDir(sessionId) {
   await fs.mkdir(getMarketResearchSessionDir(sessionId), { recursive: true });
 }
 
-export async function upsertSession(sessionId, idea, state) {
+export async function upsertSession(sessionId, idea, state, nextOwnerId = null) {
   await ensureSessionDir(sessionId);
 
   const filePath = sessionPath(sessionId);
   const now = Date.now();
 
   let createdAt = now;
-  let ownerId = null;
+  let ownerId = nextOwnerId;
   try {
     const existing = await tryReadJsonFile(filePath, sessionId);
     if (existing?.createdAt) createdAt = existing.createdAt;
@@ -180,30 +180,6 @@ export async function listSessions() {
   }
 
   return sessions;
-}
-
-export async function claimSession(sessionId, userId) {
-  const filePath = sessionPath(sessionId);
-
-  let session;
-  try {
-    session = await tryReadJsonFile(filePath, sessionId);
-  } catch {
-    return false;
-  }
-
-  if (!session) return false;
-
-  const updated = { ...session, ownerId: userId, lastAccessedAt: Date.now() };
-  await fs.writeFile(filePath, JSON.stringify(updated, null, 2));
-
-  logger.info("Market research session claimed", {
-    sessionId,
-    userId,
-    component: "MarketResearchPersistence",
-  });
-
-  return true;
 }
 
 export async function getCompetitorProfile(sessionId, competitorId) {

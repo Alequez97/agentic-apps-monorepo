@@ -12,14 +12,21 @@ const __dirname = path.dirname(__filename);
 
 dotenv.config({ path: path.join(__dirname, ".env") });
 
+function resolveFromBackendRoot(dir) {
+  if (!dir) return null;
+  return path.isAbsolute(dir) ? dir : path.resolve(__dirname, dir);
+}
+
 const dataDir = (() => {
   const dir = process.env.MR_DATA_DIR;
   if (!dir) {
     logger.error("MR_DATA_DIR env var is not set.");
     process.exit(1);
   }
-  return dir;
+  return resolveFromBackendRoot(dir);
 })();
+
+const dataRootName = path.basename(path.normalize(dataDir));
 
 const config = {
   port: (() => {
@@ -31,18 +38,20 @@ const config = {
   })(),
 
   // Root directory where all market research data is stored.
-  // Sessions live at: <dataDir>/market-research/<sessionId>/
+  // reports/, users/, logs/, tasks/, and temp/ all live here.
   dataDir,
 
-  // Queue/orchestrator root: tasks/, logs/, temp/ live here.
-  // This directory is named .market-research and sits inside dataDir.
-  queueDir: path.join(dataDir, ".market-research"),
+  // Backend root used as the agent file working directory.
+  workingDirectory: __dirname,
 
-  // FileToolExecutor write boundary — must match the queueDir sub-path
-  allowedOutputPrefix: ".market-research",
+  // Queue/orchestrator root: tasks/, logs/, temp/ live directly under dataDir.
+  queueDir: dataDir,
 
-  // Delegation request files temp prefix (relative to workingDirectory = dataDir)
-  delegationTempPrefix: ".market-research/temp",
+  // FileToolExecutor write boundary relative to workingDirectory.
+  allowedOutputPrefix: dataRootName,
+
+  // Delegation request files temp prefix relative to workingDirectory.
+  delegationTempPrefix: `${dataRootName}/temp`,
 
   apiKeys: {
     anthropic: process.env.ANTHROPIC_API_KEY,

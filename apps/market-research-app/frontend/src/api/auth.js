@@ -8,10 +8,3 @@ export const getAuthMe = () =>
 
 export const logout = () =>
   client.post("/auth/logout", {}, { withCredentials: true });
-
-export const claimSession = (sessionId) =>
-  client.post(
-    `/market-research/${sessionId}/claim`,
-    {},
-    { withCredentials: true },
-  );

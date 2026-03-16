@@ -4,7 +4,6 @@ import {
   signInWithGoogle as apiSignInWithGoogle,
   getAuthMe,
   logout as apiLogout,
-  claimSession as apiClaimSession,
 } from "../api/auth";
 
 export const useAuthStore = create(
@@ -27,15 +26,6 @@ export const useAuthStore = create(
           // Cookie cleared client-side even if server call fails
         }
         set({ user: null, returnStep: null });
-      },
-
-      claimSession: async (sessionId) => {
-        try {
-          await apiClaimSession(sessionId);
-          return true;
-        } catch {
-          return false;
-        }
       },
 
       rehydrate: async () => {

@@ -74,6 +74,7 @@ router.post("/google", async (req, res) => {
       name: user.name,
       email: user.email,
       picture: user.picture,
+      plan: user.plan ?? "free",
     },
   });
 });
@@ -94,6 +95,7 @@ router.get("/me", requireAuth, async (req, res) => {
       name: user.name,
       email: user.email,
       picture: user.picture,
+      plan: user.plan ?? "free",
     },
   });
 });

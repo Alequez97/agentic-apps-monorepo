@@ -1,28 +1,28 @@
 import client from "./client";
 
-export const getAnalysisHistory = (sessionId) =>
-  client.get("/market-research", { params: sessionId ? { sessionId } : {} });
+export const getAnalysisHistory = (reportId) =>
+  client.get("/market-research", { params: reportId ? { reportId } : {} });
 
-export const saveMarketResearchSession = (sessionId, idea, state) =>
-  client.put(`/market-research/${sessionId}`, { idea, state });
+export const saveMarketResearchReport = (reportId, idea, state) =>
+  client.put(`/market-research/${reportId}`, { idea, state });
 
-export const getMarketResearchSession = (sessionId) =>
-  client.get(`/market-research/${sessionId}`);
+export const getMarketResearchReportState = (reportId) =>
+  client.get(`/market-research/${reportId}`);
 
 export const requestMarketResearchAnalysis = (
-  sessionId,
+  reportId,
   idea,
   numCompetitors,
   regions,
 ) =>
-  client.post(`/market-research/${sessionId}/analyze`, {
+  client.post(`/market-research/${reportId}/analyze`, {
     idea,
     numCompetitors,
     regions: regions ?? null,
   });
 
-export const getMarketResearchReport = (sessionId) =>
-  client.get(`/market-research/${sessionId}/report`);
+export const getMarketResearchReport = (reportId) =>
+  client.get(`/market-research/${reportId}/report`);
 
-export const getCompetitorDetails = (sessionId, competitorId) =>
-  client.get(`/market-research/${sessionId}/competitors/${competitorId}`);
+export const getCompetitorDetails = (reportId, competitorId) =>
+  client.get(`/market-research/${reportId}/competitors/${competitorId}`);

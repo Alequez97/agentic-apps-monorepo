@@ -36,7 +36,7 @@ export const useMarketResearchStore = create(
       selectedPlan: null,
 
       // --- Analysis state ---
-      sessionId: null,
+      reportId: null,
       analysisStartedAt: null,
       isAnalyzing: false,
       isAnalysisComplete: false,
@@ -63,11 +63,11 @@ export const useMarketResearchStore = create(
       startAnalysis: async () => {
         const { idea, regions, selectedPlan } = get();
         const numCompetitors = selectedPlan?.numCompetitors ?? 10;
-        const sessionId = crypto.randomUUID();
+        const reportId = crypto.randomUUID();
 
         set({
           step: "analysis",
-          sessionId,
+          reportId,
           isAnalyzing: true,
           isAnalysisComplete: false,
           summaryStatus: "finding-competitors",
@@ -79,7 +79,7 @@ export const useMarketResearchStore = create(
 
         try {
           await requestMarketResearchAnalysis(
-            sessionId,
+            reportId,
             idea,
             numCompetitors,
             regions,
@@ -96,7 +96,7 @@ export const useMarketResearchStore = create(
       resetAnalysis: () => {
         set({
           step: "input",
-          sessionId: null,
+          reportId: null,
           isAnalyzing: false,
           isAnalysisComplete: false,
           summaryStatus: "idle",
@@ -112,12 +112,12 @@ export const useMarketResearchStore = create(
       clearSelectedCompetitor: () => set({ selectedCompetitorId: null }),
 
       loadCompetitorDetails: async (competitorId) => {
-        const { sessionId, competitors } = get();
-        if (!sessionId) return;
+        const { reportId, competitors } = get();
+        if (!reportId) return;
         const existing = competitors.find((c) => c.id === competitorId);
         if (existing?.details) return;
         try {
-          const response = await getCompetitorDetails(sessionId, competitorId);
+          const response = await getCompetitorDetails(reportId, competitorId);
           if (
             response?.status === 202 &&
             response?.data?.status === "retrying"
@@ -262,11 +262,11 @@ export const useMarketResearchStore = create(
       goToProfile: () => set({ step: "profile" }),
 
       openHistoryAnalysis: async (entry) => {
-        const sessionId = entry.id;
+        const reportId = entry.id;
         set({
           step: "summary",
           idea: entry.idea,
-          sessionId,
+          reportId,
           report: null,
           competitors: [],
           isAnalyzing: false,
@@ -274,7 +274,7 @@ export const useMarketResearchStore = create(
           summaryStatus: "ready",
         });
         try {
-          const response = await fetchMarketResearchReport(sessionId);
+          const response = await fetchMarketResearchReport(reportId);
           const report = response?.data?.report;
           if (report) {
             get()._applyReport(report);
@@ -287,7 +287,7 @@ export const useMarketResearchStore = create(
     {
       name: "market-research-store",
       storage: createJSONStorage(() => sessionStorage),
-      partialize: (state) => ({ sessionId: state.sessionId }),
+      partialize: (state) => ({ reportId: state.reportId }),
     },
   ),
 );

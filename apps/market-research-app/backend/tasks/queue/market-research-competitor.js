@@ -77,7 +77,7 @@ export async function queueMarketResearchCompetitorTask(
       reasoningEffort: taskConfig.reasoningEffort,
     },
     systemInstructionFile: "market-research-competitor.md",
-    outputFile: `market-research/${sessionId}/competitors/${competitorId}.json`,
+    outputFile: `${config.allowedOutputPrefix}/market-research/${sessionId}/competitors/${competitorId}.json`,
     progressFile,
   };
 

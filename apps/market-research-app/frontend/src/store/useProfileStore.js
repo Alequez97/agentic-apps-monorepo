@@ -1,6 +1,5 @@
 import { create } from "zustand";
 import { getAnalysisHistory } from "../api/market-research";
-import { useMarketResearchStore } from "./useMarketResearchStore";
 
 export const useProfileStore = create((set) => ({
   analysisHistory: [],
@@ -8,10 +7,9 @@ export const useProfileStore = create((set) => ({
   error: null,
 
   fetchHistory: async () => {
-    const sessionId = useMarketResearchStore.getState().sessionId;
     set({ isLoading: true, error: null });
     try {
-      const response = await getAnalysisHistory(sessionId);
+      const response = await getAnalysisHistory();
       set({ analysisHistory: response.data?.history ?? [], isLoading: false });
     } catch (err) {
       set({ error: err.message ?? "Failed to load history", isLoading: false });

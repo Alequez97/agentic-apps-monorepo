@@ -41,7 +41,7 @@ const orchestrator = new TaskOrchestrator({
   registry: null, // set below after createRegistry
   queueDir: config.queueDir,
   apiKeys: config.apiKeys,
-  workingDirectory: config.dataDir,
+  workingDirectory: config.workingDirectory,
   allowedOutputPrefix: config.allowedOutputPrefix,
 });
 

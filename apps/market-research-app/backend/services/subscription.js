@@ -1,3 +1,5 @@
+import { getUser } from "../persistence/users.js";
+
 export const PLANS = {
   free: {
     name: "free",
@@ -41,12 +43,23 @@ export const PLANS = {
   },
 };
 
-async function getSubscription(_userId) {
-  // TODO: replace with real DB/Stripe lookup
-  return "free";
+async function getSubscription(userId) {
+  if (!userId) {
+    return null;
+  }
+
+  const user = await getUser(userId);
+  if (!user) {
+    return null;
+  }
+
+  return user.plan ?? "free";
 }
 
 export async function getSubscriptionPlanDetails(userId) {
   const planName = await getSubscription(userId);
+  if (!planName) {
+    return null;
+  }
   return PLANS[planName] ?? PLANS.free;
 }

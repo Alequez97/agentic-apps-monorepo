@@ -20,12 +20,12 @@ export function SignInNotice() {
         />
         <VStack align="start" gap={1} flex="1">
           <Text fontSize="13px" fontWeight="600" color="#0f172a">
-            Sign in to save your reports
+            Sign in before you run analysis
           </Text>
           <Text fontSize="11px" color="#64748b" lineHeight="1.6">
-            Create a free account to keep your research history, revisit past
-            analyses, and unlock the full platform — including saved projects,
-            cross-report comparisons, and personalised insights.
+            Google sign-in is required for every request. New accounts are
+            created on the free plan, so each report is tied to a real user
+            instead of an anonymous session.
           </Text>
         </VStack>
       </HStack>

@@ -24,7 +24,10 @@ function processTemplate(template, variables) {
 }
 
 function buildTemplateVars(task) {
-  const progressFile = getProgressFileRelativePath(task.id, ".market-research");
+  const progressFile = getProgressFileRelativePath(
+    task.id,
+    config.allowedOutputPrefix,
+  );
 
   switch (task.type) {
     case TASK_TYPES.MARKET_RESEARCH_INITIAL:

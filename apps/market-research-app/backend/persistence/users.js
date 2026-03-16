@@ -38,6 +38,7 @@ export async function upsertUser(profile) {
     email: profile.email,
     name: profile.name,
     picture: profile.picture,
+    plan: "free",
     createdAt,
     lastSeenAt: now,
   };

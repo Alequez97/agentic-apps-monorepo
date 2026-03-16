@@ -6,38 +6,50 @@ import {
   getMarketResearchReport,
   getCompetitorProfile,
   listSessions,
-  claimSession,
 } from "../persistence/market-research.js";
 import { queueMarketResearchInitialTask } from "../tasks/queue/market-research-initial.js";
 import { getSubscriptionPlanDetails } from "../services/subscription.js";
-import { softAuth, requireAuth } from "../middleware/auth.js";
+import { requireAuth } from "../middleware/auth.js";
+
+async function requireOwnedReport(req, res, reportId) {
+  const reportSession = await getSession(reportId);
+
+  if (!reportSession) {
+    res.status(404).json({ error: "Report not found or expired" });
+    return null;
+  }
+
+  if (reportSession.ownerId !== req.userId) {
+    res.status(403).json({ error: "Forbidden" });
+    return null;
+  }
+
+  return reportSession;
+}
 
 export function createMarketResearchRouter(orchestrator) {
   const router = Router();
 
   // GET /api/market-research
-  // List analysis sessions as history entries.
-  // Optional ?sessionId= query param to filter to a specific session.
-  // When authenticated, only return sessions owned by the authenticated user.
-  router.get("/", softAuth, async (req, res) => {
-    const { sessionId } = req.query;
+  // List report history entries.
+  // Optional ?reportId= query param to filter to a specific report.
+  router.get("/", requireAuth, async (req, res) => {
+    const { reportId } = req.query;
     try {
       const sessions = await listSessions();
-      let filtered = sessionId
-        ? sessions.filter((s) => s.sessionId === sessionId)
+      let filtered = reportId
+        ? sessions.filter((entry) => entry.sessionId === reportId)
         : sessions;
 
-      if (req.userId) {
-        filtered = filtered.filter((s) => s.ownerId === req.userId);
-      }
+      filtered = filtered.filter((entry) => entry.ownerId === req.userId);
 
       const history = filtered
-        .map((s) => ({
-          id: s.sessionId,
-          idea: s.idea,
-          completedAt: s.state?.completedAt ?? s.createdAt,
-          competitorCount: s.state?.competitorCount ?? 0,
-          status: s.state?.status ?? "analyzing",
+        .map((entry) => ({
+          id: entry.sessionId,
+          idea: entry.idea,
+          completedAt: entry.state?.completedAt ?? entry.createdAt,
+          competitorCount: entry.state?.competitorCount ?? 0,
+          status: entry.state?.status ?? "analyzing",
         }))
         .sort((a, b) => b.completedAt - a.completedAt);
 
@@ -51,10 +63,10 @@ export function createMarketResearchRouter(orchestrator) {
     }
   });
 
-  // PUT /api/market-research/:sessionId
-  // Save (or overwrite) an analysis session — called when user logs in
-  router.put("/:sessionId", async (req, res) => {
-    const { sessionId } = req.params;
+  // PUT /api/market-research/:reportId
+  // Save or overwrite one report state.
+  router.put("/:reportId", requireAuth, async (req, res) => {
+    const { reportId } = req.params;
     const { idea, state } = req.body;
 
     if (!idea || typeof idea !== "string" || !idea.trim()) {
@@ -65,73 +77,52 @@ export function createMarketResearchRouter(orchestrator) {
     }
 
     try {
-      const session = await upsertSession(sessionId, idea.trim(), state);
-      return res.json({ session });
+      const reportSession = await upsertSession(
+        reportId,
+        idea.trim(),
+        state,
+        req.userId,
+      );
+      return res.json({ session: reportSession });
     } catch (error) {
       if (error.message === "Invalid sessionId format") {
-        return res.status(400).json({ error: "Invalid sessionId format" });
+        return res.status(400).json({ error: "Invalid reportId format" });
       }
-      logger.error("Failed to save market research session", {
+      logger.error("Failed to save market research report state", {
         error: error.message,
-        sessionId,
+        reportId,
         component: "MarketResearchRoutes",
       });
-      return res.status(500).json({ error: "Failed to save session" });
+      return res.status(500).json({ error: "Failed to save report state" });
     }
   });
 
-  // GET /api/market-research/:sessionId
-  // Retrieve a stored session by ID
-  router.get("/:sessionId", async (req, res) => {
-    const { sessionId } = req.params;
+  // GET /api/market-research/:reportId
+  // Retrieve a stored report state by ID.
+  router.get("/:reportId", requireAuth, async (req, res) => {
+    const { reportId } = req.params;
 
     try {
-      const session = await getSession(sessionId);
-      if (!session) {
-        return res.status(404).json({ error: "Session not found or expired" });
-      }
-      return res.json({ session });
+      const reportSession = await requireOwnedReport(req, res, reportId);
+      if (!reportSession) return;
+      return res.json({ session: reportSession });
     } catch (error) {
       if (error.message === "Invalid sessionId format") {
-        return res.status(400).json({ error: "Invalid sessionId format" });
+        return res.status(400).json({ error: "Invalid reportId format" });
       }
-      logger.error("Failed to get market research session", {
+      logger.error("Failed to get market research report state", {
         error: error.message,
-        sessionId,
+        reportId,
         component: "MarketResearchRoutes",
       });
-      return res.status(500).json({ error: "Failed to load session" });
+      return res.status(500).json({ error: "Failed to load report state" });
     }
   });
 
-  // POST /api/market-research/:sessionId/claim
-  // Claim an anonymous session for the authenticated user.
-  router.post("/:sessionId/claim", requireAuth, async (req, res) => {
-    const { sessionId } = req.params;
-
-    try {
-      const claimed = await claimSession(sessionId, req.userId);
-      if (!claimed) {
-        return res.status(404).json({ error: "Session not found" });
-      }
-      return res.json({ success: true });
-    } catch (error) {
-      if (error.message === "Invalid sessionId format") {
-        return res.status(400).json({ error: "Invalid sessionId format" });
-      }
-      logger.error("Failed to claim session", {
-        error: error.message,
-        sessionId,
-        component: "MarketResearchRoutes",
-      });
-      return res.status(500).json({ error: "Failed to claim session" });
-    }
-  });
-
-  // POST /api/market-research/:sessionId/analyze
-  // Queue an AI market research task for this session
-  router.post("/:sessionId/analyze", async (req, res) => {
-    const { sessionId } = req.params;
+  // POST /api/market-research/:reportId/analyze
+  // Queue a market research run for this report.
+  router.post("/:reportId/analyze", requireAuth, async (req, res) => {
+    const { reportId } = req.params;
     const { idea, regions } = req.body;
 
     if (!idea || typeof idea !== "string" || !idea.trim()) {
@@ -141,25 +132,33 @@ export function createMarketResearchRouter(orchestrator) {
     const normalizedRegions =
       Array.isArray(regions) && regions.length > 0 ? regions : null;
 
-    const plan = await getSubscriptionPlanDetails(req.userId ?? null);
+    const plan = await getSubscriptionPlanDetails(req.userId);
+    if (!plan) {
+      return res.status(403).json({ error: "No subscription plan found" });
+    }
     const numCompetitors = plan.numCompetitors;
 
     try {
-      await upsertSession(sessionId, idea.trim(), {
-        status: "analyzing",
-        numCompetitors,
-      });
+      await upsertSession(
+        reportId,
+        idea.trim(),
+        {
+          status: "analyzing",
+          numCompetitors,
+        },
+        req.userId,
+      );
     } catch (persistError) {
-      logger.warn("Failed to persist session before queuing task", {
+      logger.warn("Failed to persist report state before queuing task", {
         error: persistError.message,
-        sessionId,
+        reportId,
         component: "MarketResearchRoutes",
       });
     }
 
     try {
       const task = await queueMarketResearchInitialTask(orchestrator, {
-        sessionId,
+        sessionId: reportId,
         idea: idea.trim(),
         numCompetitors,
         regions: normalizedRegions,
@@ -174,61 +173,71 @@ export function createMarketResearchRouter(orchestrator) {
 
       logger.info("Market research task queued via API", {
         taskId: task.id,
-        sessionId,
+        reportId,
         component: "MarketResearchRoutes",
       });
 
       return res.status(201).json({ task });
     } catch (error) {
       if (error.message === "Invalid sessionId format") {
-        return res.status(400).json({ error: "Invalid sessionId format" });
+        return res.status(400).json({ error: "Invalid reportId format" });
       }
       logger.error("Failed to queue market research task", {
         error: error.message,
-        sessionId,
+        reportId,
         component: "MarketResearchRoutes",
       });
       return res.status(500).json({ error: "Failed to start analysis" });
     }
   });
 
-  // GET /api/market-research/:sessionId/competitors/:competitorId
-  // Retrieve one competitor's detailed profile (written by the agent)
-  router.get("/:sessionId/competitors/:competitorId", async (req, res) => {
-    const { sessionId, competitorId } = req.params;
+  // GET /api/market-research/:reportId/competitors/:competitorId
+  // Retrieve one competitor profile for a report.
+  router.get(
+    "/:reportId/competitors/:competitorId",
+    requireAuth,
+    async (req, res) => {
+      const { reportId, competitorId } = req.params;
+
+      try {
+        const reportSession = await requireOwnedReport(req, res, reportId);
+        if (!reportSession) return;
+
+        const profile = await getCompetitorProfile(reportId, competitorId);
+        if (!profile) {
+          return res.status(404).json({ error: "Competitor profile not found" });
+        }
+        return res.json({ competitor: profile });
+      } catch (error) {
+        if (
+          error.message === "Invalid sessionId format" ||
+          error.message === "Invalid competitorId format"
+        ) {
+          return res.status(400).json({ error: "Invalid request" });
+        }
+        logger.error("Failed to load competitor profile", {
+          error: error.message,
+          reportId,
+          competitorId,
+          component: "MarketResearchRoutes",
+        });
+        return res
+          .status(500)
+          .json({ error: "Failed to load competitor profile" });
+      }
+    },
+  );
+
+  // GET /api/market-research/:reportId/report
+  // Retrieve the final generated report payload.
+  router.get("/:reportId/report", requireAuth, async (req, res) => {
+    const { reportId } = req.params;
 
     try {
-      const profile = await getCompetitorProfile(sessionId, competitorId);
-      if (!profile) {
-        return res.status(404).json({ error: "Competitor profile not found" });
-      }
-      return res.json({ competitor: profile });
-    } catch (error) {
-      if (
-        error.message === "Invalid sessionId format" ||
-        error.message === "Invalid competitorId format"
-      ) {
-        return res.status(400).json({ error: error.message });
-      }
-      logger.error("Failed to load competitor profile", {
-        error: error.message,
-        sessionId,
-        competitorId,
-        component: "MarketResearchRoutes",
-      });
-      return res
-        .status(500)
-        .json({ error: "Failed to load competitor profile" });
-    }
-  });
+      const reportSession = await requireOwnedReport(req, res, reportId);
+      if (!reportSession) return;
 
-  // GET /api/market-research/:sessionId/report
-  // Retrieve the AI-generated report for a session (written by the agent)
-  router.get("/:sessionId/report", async (req, res) => {
-    const { sessionId } = req.params;
-
-    try {
-      const report = await getMarketResearchReport(sessionId);
+      const report = await getMarketResearchReport(reportId);
       if (!report) {
         return res.status(404).json({
           error: "Report not found",
@@ -239,11 +248,11 @@ export function createMarketResearchRouter(orchestrator) {
       return res.json({ report });
     } catch (error) {
       if (error.message === "Invalid sessionId format") {
-        return res.status(400).json({ error: "Invalid sessionId format" });
+        return res.status(400).json({ error: "Invalid reportId format" });
       }
       logger.error("Failed to load market research report", {
         error: error.message,
-        sessionId,
+        reportId,
         component: "MarketResearchRoutes",
       });
       return res.status(500).json({ error: "Failed to load report" });
