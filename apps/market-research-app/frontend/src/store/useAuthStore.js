@@ -11,7 +11,6 @@ export const useAuthStore = create(
   persist(
     (set) => ({
       user: null,
-      returnStep: null,
 
       signInWithGoogle: async (credential) => {
         const response = await apiSignInWithGoogle(credential);
@@ -28,7 +27,7 @@ export const useAuthStore = create(
           // Cookie cleared client-side even if server call fails
         }
         setCsrfToken(null);
-        set({ user: null, returnStep: null });
+        set({ user: null });
       },
 
       rehydrate: async () => {
@@ -43,8 +42,6 @@ export const useAuthStore = create(
           return null;
         }
       },
-
-      setReturnStep: (step) => set({ returnStep: step }),
     }),
     {
       name: "auth-store",

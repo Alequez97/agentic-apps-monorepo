@@ -1,4 +1,5 @@
 import { Button, HStack } from "@chakra-ui/react";
+import { useNavigate } from "react-router-dom";
 import { useMarketResearchStore } from "../../store/useMarketResearchStore";
 
 /**
@@ -6,6 +7,7 @@ import { useMarketResearchStore } from "../../store/useMarketResearchStore";
  */
 export function SummaryActionButtons() {
   const resetAnalysis = useMarketResearchStore((s) => s.resetAnalysis);
+  const navigate = useNavigate();
 
   return (
     <HStack justify="center" gap={3} flexWrap="wrap" mt={10}>
@@ -32,7 +34,10 @@ export function SummaryActionButtons() {
         px={4}
         h="38px"
         _hover={{ bg: "#f1f5f9" }}
-        onClick={resetAnalysis}
+        onClick={() => {
+          resetAnalysis();
+          navigate("/analyze");
+        }}
       >
         Run new analysis
       </Button>

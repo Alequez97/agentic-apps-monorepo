@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Box, Button, HStack, Text, VStack } from "@chakra-ui/react";
+import { useNavigate } from "react-router-dom";
 import { useMarketResearchStore } from "../../store/useMarketResearchStore";
 import { CompetitorsGrid } from "./CompetitorsGrid";
 import { ActivityFeed } from "./ActivityFeed";
@@ -9,9 +10,7 @@ import { MarketResearchSummaryPanel } from "./MarketResearchSummaryPanel";
 function ProgressBar() {
   const competitors = useMarketResearchStore((s) => s.competitors);
   const isAnalyzing = useMarketResearchStore((s) => s.isAnalyzing);
-  const isAnalysisComplete = useMarketResearchStore(
-    (s) => s.isAnalysisComplete,
-  );
+  const isAnalysisComplete = useMarketResearchStore((s) => s.isAnalysisComplete);
 
   const total = competitors.length;
   const doneCount = competitors.filter((c) => c.status === "done").length;
@@ -69,13 +68,7 @@ function TabBar({ active, onChange, activityCount, isAnalyzing }) {
   ];
 
   return (
-    <HStack
-      gap="2px"
-      bg="#f1f5f9"
-      borderRadius="10px"
-      p="3px"
-      display="inline-flex"
-    >
+    <HStack gap="2px" bg="#f1f5f9" borderRadius="10px" p="3px" display="inline-flex">
       {tabs.map(({ id, label }) => (
         <Button
           key={id}
@@ -122,34 +115,23 @@ export function AnalysisPage() {
   const idea = useMarketResearchStore((s) => s.idea);
   const activityEvents = useMarketResearchStore((s) => s.activityEvents);
   const isAnalyzing = useMarketResearchStore((s) => s.isAnalyzing);
-  const isAnalysisComplete = useMarketResearchStore(
-    (s) => s.isAnalysisComplete,
-  );
-  const resetAnalysis = useMarketResearchStore((s) => s.resetAnalysis);
-  const goToLanding = useMarketResearchStore((s) => s.goToLanding);
-  const goToSummary = useMarketResearchStore((s) => s.goToSummary);
-  const selectedCompetitorId = useMarketResearchStore(
-    (s) => s.selectedCompetitorId,
-  );
-  const clearSelectedCompetitor = useMarketResearchStore(
-    (s) => s.clearSelectedCompetitor,
-  );
+  const isAnalysisComplete = useMarketResearchStore((s) => s.isAnalysisComplete);
+  const navigate = useNavigate();
+  const goToSummary = () => {
+    navigate("/summary");
+  };
+  const selectedCompetitorId = useMarketResearchStore((s) => s.selectedCompetitorId);
+  const clearSelectedCompetitor = useMarketResearchStore((s) => s.clearSelectedCompetitor);
   const competitors = useMarketResearchStore((s) => s.competitors);
 
-  const selectedCompetitor =
-    competitors.find((c) => c.id === selectedCompetitorId) ?? null;
+  const selectedCompetitor = competitors.find((c) => c.id === selectedCompetitorId) ?? null;
 
   return (
     <Box minH="100vh" bg="#f8fafc">
       <Box maxW="1024px" mx="auto" px={6} pt="72px" pb={12}>
         {/* Page header */}
         <VStack align="start" gap={0.5} mb={8}>
-          <Text
-            fontSize="26px"
-            fontWeight="800"
-            color="#0f172a"
-            letterSpacing="-0.025em"
-          >
+          <Text fontSize="26px" fontWeight="800" color="#0f172a" letterSpacing="-0.025em">
             Market Analysis
           </Text>
           {idea && (

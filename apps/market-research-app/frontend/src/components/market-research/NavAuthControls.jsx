@@ -1,8 +1,7 @@
 import { Box, Button, HStack, Text } from "@chakra-ui/react";
 import { LogOut, User } from "lucide-react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useAuthStore } from "../../store/useAuthStore";
-import { useLocationStore } from "../../store/useLocationStore";
-import { useMarketResearchStore } from "../../store/useMarketResearchStore";
 
 /**
  * Auth controls rendered in the navbar right slot.
@@ -12,15 +11,13 @@ import { useMarketResearchStore } from "../../store/useMarketResearchStore";
 export function NavAuthControls() {
   const user = useAuthStore((s) => s.user);
   const signOut = useAuthStore((s) => s.signOut);
-  const setReturnStep = useAuthStore((s) => s.setReturnStep);
 
-  const step = useLocationStore((s) => s.step);
-  const setStep = useMarketResearchStore((s) => s.setStep);
-  const goToProfile = useMarketResearchStore((s) => s.goToProfile);
+  const { pathname } = useLocation();
+  const navigate = useNavigate();
+  const goToProfile = () => navigate("/profile");
 
   const handleSignIn = () => {
-    setReturnStep(step);
-    setStep("login");
+    navigate("/login", { state: { returnTo: pathname } });
   };
 
   if (!user) {
@@ -91,13 +88,7 @@ export function NavAuthControls() {
             <User size={11} color="white" strokeWidth={2.5} />
           </Box>
         )}
-        <Text
-          fontSize="12px"
-          fontWeight="500"
-          color="#374151"
-          maxW="140px"
-          truncate
-        >
+        <Text fontSize="12px" fontWeight="500" color="#374151" maxW="140px" truncate>
           {user.name ?? user.email}
         </Text>
       </HStack>

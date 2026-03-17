@@ -1,20 +1,19 @@
 import { Box, Button, HStack, Text, VStack } from "@chakra-ui/react";
 import { GoogleLogin } from "@react-oauth/google";
 import { ArrowLeft, Search } from "lucide-react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useAuthStore } from "../../store/useAuthStore";
-import { useMarketResearchStore } from "../../store/useMarketResearchStore";
 import { toaster } from "../ui/toaster";
 
 export function LoginPage() {
   const signInWithGoogle = useAuthStore((s) => s.signInWithGoogle);
-  const returnStep = useAuthStore((s) => s.returnStep);
-  const setReturnStep = useAuthStore((s) => s.setReturnStep);
 
-  const setStep = useMarketResearchStore((s) => s.setStep);
+  const navigate = useNavigate();
+  const location = useLocation();
+  const returnTo = location.state?.returnTo ?? "/";
 
   const handleBack = () => {
-    setStep(returnStep ?? "landing");
-    setReturnStep(null);
+    navigate(returnTo);
   };
 
   const handleGoogleSuccess = async (credentialResponse) => {
@@ -26,8 +25,7 @@ export function LoginPage() {
         type: "success",
       });
 
-      setStep(returnStep ?? "landing");
-      setReturnStep(null);
+      navigate(returnTo);
     } catch {
       toaster.create({
         title: "Sign-in failed",
@@ -78,28 +76,18 @@ export function LoginPage() {
             >
               <Search size={17} strokeWidth={2.5} />
             </Box>
-            <Text
-              fontWeight="800"
-              fontSize="18px"
-              color="#0f172a"
-              letterSpacing="-0.02em"
-            >
+            <Text fontWeight="800" fontSize="18px" color="#0f172a" letterSpacing="-0.02em">
               Researchio
             </Text>
           </HStack>
 
           <VStack gap={1} textAlign="center">
-            <Text
-              fontSize="20px"
-              fontWeight="800"
-              color="#0f172a"
-              letterSpacing="-0.02em"
-            >
+            <Text fontSize="20px" fontWeight="800" color="#0f172a" letterSpacing="-0.02em">
               Sign in to continue
             </Text>
             <Text fontSize="13px" color="#64748b" lineHeight="1.6" maxW="280px">
-              Google sign-in is required before any market research request.
-              Every registered user starts on the free plan.
+              Google sign-in is required before any market research request. Every registered user
+              starts on the free plan.
             </Text>
           </VStack>
 
@@ -126,13 +114,7 @@ export function LoginPage() {
               "Free plan - no credit card required",
             ].map((item) => (
               <HStack key={item} gap={2}>
-                <Box
-                  w="5px"
-                  h="5px"
-                  borderRadius="50%"
-                  bg="#6366f1"
-                  flexShrink={0}
-                />
+                <Box w="5px" h="5px" borderRadius="50%" bg="#6366f1" flexShrink={0} />
                 <Text fontSize="12px" color="#64748b">
                   {item}
                 </Text>

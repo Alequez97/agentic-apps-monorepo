@@ -1,29 +1,29 @@
 import { Box, Button, Text, Textarea, VStack } from "@chakra-ui/react";
 import { Search } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { useAuthStore } from "../../store/useAuthStore";
 import { useMarketResearchStore } from "../../store/useMarketResearchStore";
 import { RegionSelector } from "./RegionSelector";
 
 export function IdeaInputCard() {
   const user = useAuthStore((s) => s.user);
-  const setReturnStep = useAuthStore((s) => s.setReturnStep);
+  const navigate = useNavigate();
   const idea = useMarketResearchStore((s) => s.idea);
   const setIdea = useMarketResearchStore((s) => s.setIdea);
   const regions = useMarketResearchStore((s) => s.regions);
   const startAnalysis = useMarketResearchStore((s) => s.startAnalysis);
-  const setStep = useMarketResearchStore((s) => s.setStep);
 
   const regionValid = regions === null || regions.length > 0;
   const canSubmit = idea.trim() && regionValid;
 
-  const handleAnalyze = () => {
+  const handleAnalyze = async () => {
     if (!user) {
-      setReturnStep("input");
-      setStep("login");
+      navigate("/login", { state: { returnTo: "/analyze" } });
       return;
     }
 
-    startAnalysis();
+    await startAnalysis();
+    navigate("/analysis");
   };
 
   return (

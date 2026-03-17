@@ -1,7 +1,7 @@
 import { Box } from "@chakra-ui/react";
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useMarketResearchStore } from "../../store/useMarketResearchStore";
-import { useLocationStore } from "../../store/useLocationStore";
 import { CompetitorDetails } from "./CompetitorDetails";
 import { SummaryHeroBanner } from "./SummaryHeroBanner";
 import { StartBuildingModal } from "./StartBuildingModal";
@@ -16,24 +16,19 @@ export function AnalysisSummaryPage() {
   const competitors = useMarketResearchStore((s) => s.competitors);
   const report = useMarketResearchStore((s) => s.report);
   const reportId = useMarketResearchStore((s) => s.reportId);
-  const selectedCompetitorId = useMarketResearchStore(
-    (s) => s.selectedCompetitorId,
-  );
+  const selectedCompetitorId = useMarketResearchStore((s) => s.selectedCompetitorId);
   const selectCompetitor = useMarketResearchStore((s) => s.selectCompetitor);
-  const clearSelectedCompetitor = useMarketResearchStore(
-    (s) => s.clearSelectedCompetitor,
-  );
-  const replaceStep = useLocationStore((s) => s.replace);
+  const clearSelectedCompetitor = useMarketResearchStore((s) => s.clearSelectedCompetitor);
+  const navigate = useNavigate();
 
   const [buildingModalOpen, setBuildingModalOpen] = useState(false);
 
-  const selectedCompetitor =
-    competitors.find((c) => c.id === selectedCompetitorId) ?? null;
+  const selectedCompetitor = competitors.find((c) => c.id === selectedCompetitorId) ?? null;
 
   useEffect(() => {
     if (report) return;
-    replaceStep(reportId ? "analysis" : "input");
-  }, [report, reportId, replaceStep]);
+    navigate(reportId ? "/analysis" : "/analyze", { replace: true });
+  }, [report, reportId, navigate]);
 
   if (!report) {
     return null;
@@ -43,10 +38,7 @@ export function AnalysisSummaryPage() {
     return (
       <Box minH="100vh" bg="#f8fafc">
         <Box maxW="1040px" mx="auto" px={6} pt="72px" pb={16}>
-          <CompetitorDetails
-            competitor={selectedCompetitor}
-            onBack={clearSelectedCompetitor}
-          />
+          <CompetitorDetails competitor={selectedCompetitor} onBack={clearSelectedCompetitor} />
         </Box>
       </Box>
     );
@@ -65,9 +57,7 @@ export function AnalysisSummaryPage() {
           onStartBuilding={() => setBuildingModalOpen(true)}
         />
 
-        <OpportunityMarketGapsTable
-          marketGaps={report?.opportunity?.marketGaps}
-        />
+        <OpportunityMarketGapsTable marketGaps={report?.opportunity?.marketGaps} />
 
         <CompetitorComparisonTable
           competitors={competitors}
@@ -76,10 +66,7 @@ export function AnalysisSummaryPage() {
 
         <SummaryActionButtons />
 
-        <StartBuildingModal
-          open={buildingModalOpen}
-          onClose={() => setBuildingModalOpen(false)}
-        />
+        <StartBuildingModal open={buildingModalOpen} onClose={() => setBuildingModalOpen(false)} />
       </Box>
     </Box>
   );

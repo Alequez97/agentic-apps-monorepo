@@ -1,13 +1,13 @@
 import { Badge, Box, Button, HStack, Text, VStack } from "@chakra-ui/react";
 import { Check, X, Clock } from "lucide-react";
-import { useMarketResearchStore } from "../../store/useMarketResearchStore";
+import { useNavigate } from "react-router-dom";
 
 export function PricingCard({ plan, isComingSoon = false }) {
-  const goToInput = useMarketResearchStore((s) => s.goToInput);
+  const navigate = useNavigate();
 
   function handleCta() {
     if (isComingSoon) return;
-    goToInput();
+    navigate("/analyze");
   }
 
   return (
@@ -23,9 +23,7 @@ export function PricingCard({ plan, isComingSoon = false }) {
         boxShadow: isComingSoon ? "none" : "0 6px 20px rgba(0,0,0,.06)",
       }}
       boxShadow={
-        plan.featured
-          ? "0 0 0 4px rgba(99,102,241,.08), 0 8px 24px rgba(99,102,241,.12)"
-          : "none"
+        plan.featured ? "0 0 0 4px rgba(99,102,241,.08), 0 8px 24px rgba(99,102,241,.12)" : "none"
       }
       overflow="hidden"
     >
@@ -43,21 +41,10 @@ export function PricingCard({ plan, isComingSoon = false }) {
         >
           <VStack gap={1.5}>
             <Clock size={18} color="#6366f1" strokeWidth={2} />
-            <Text
-              fontSize="12px"
-              fontWeight="700"
-              color="#6366f1"
-              letterSpacing="0.04em"
-            >
+            <Text fontSize="12px" fontWeight="700" color="#6366f1" letterSpacing="0.04em">
               Coming Soon
             </Text>
-            <Text
-              fontSize="10px"
-              color="#94a3b8"
-              textAlign="center"
-              maxW="120px"
-              lineHeight="1.4"
-            >
+            <Text fontSize="10px" color="#94a3b8" textAlign="center" maxW="120px" lineHeight="1.4">
               Paid plans launch shortly.
             </Text>
           </VStack>
@@ -106,12 +93,7 @@ export function PricingCard({ plan, isComingSoon = false }) {
         </Badge>
 
         <HStack gap={0.5} align="baseline">
-          <Text
-            fontSize="30px"
-            fontWeight="800"
-            color="#0f172a"
-            letterSpacing="-0.03em"
-          >
+          <Text fontSize="30px" fontWeight="800" color="#0f172a" letterSpacing="-0.03em">
             ${plan.price}
           </Text>
           <Text fontSize="12px" color="#94a3b8" fontWeight="400">
@@ -129,19 +111,11 @@ export function PricingCard({ plan, isComingSoon = false }) {
           borderRadius="8px"
           fontSize="12px"
           fontWeight="600"
-          bg={
-            plan.ctaStyle === "primary"
-              ? "linear-gradient(135deg, #6366f1, #7c3aed)"
-              : "white"
-          }
+          bg={plan.ctaStyle === "primary" ? "linear-gradient(135deg, #6366f1, #7c3aed)" : "white"}
           color={plan.ctaStyle === "primary" ? "white" : "#374151"}
           borderWidth={plan.ctaStyle === "outline" ? "1px" : "0"}
           borderColor="#e2e8f0"
-          boxShadow={
-            plan.ctaStyle === "primary"
-              ? "0 2px 8px rgba(99,102,241,.3)"
-              : "none"
-          }
+          boxShadow={plan.ctaStyle === "primary" ? "0 2px 8px rgba(99,102,241,.3)" : "none"}
           _hover={{
             opacity: 0.9,
             bg: plan.ctaStyle === "outline" ? "#f8fafc" : undefined,

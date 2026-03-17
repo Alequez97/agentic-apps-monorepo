@@ -1,9 +1,9 @@
 import { Badge, Box, Button, Heading, Text, VStack } from "@chakra-ui/react";
 import { Search } from "lucide-react";
-import { useMarketResearchStore } from "../../store/useMarketResearchStore";
+import { useNavigate } from "react-router-dom";
 
 export function HeroSection() {
-  const goToInput = useMarketResearchStore((s) => s.goToInput);
+  const navigate = useNavigate();
 
   return (
     <Box
@@ -106,7 +106,7 @@ export function HeroSection() {
             transform: "translateY(-1px)",
           }}
           _active={{ transform: "none" }}
-          onClick={goToInput}
+          onClick={() => navigate(\"/analyze\")}
         >
           <Search size={16} strokeWidth={2.5} />
           Get started free

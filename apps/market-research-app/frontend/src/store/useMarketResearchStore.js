@@ -5,19 +5,13 @@ import {
   getMarketResearchReport as fetchMarketResearchReport,
   getCompetitorDetails,
 } from "../api/market-research";
-import { useLocationStore } from "./useLocationStore";
 
 function logLineToKind(log) {
   const lower = log.toLowerCase();
   if (lower.includes("write_file") || lower.includes("writing")) return "write";
-  if (
-    lower.includes("read_file") ||
-    lower.includes("reading") ||
-    lower.includes("extract")
-  )
+  if (lower.includes("read_file") || lower.includes("reading") || lower.includes("extract"))
     return "extract";
-  if (lower.includes("navigate") || lower.includes("visiting"))
-    return "navigate";
+  if (lower.includes("navigate") || lower.includes("visiting")) return "navigate";
   if (lower.includes("found") || lower.includes("identified")) return "found";
   return "search";
 }
@@ -45,13 +39,8 @@ export const useMarketResearchStore = create(
       report: null,
       competitorTaskMap: {},
 
-      // --- Navigation actions ---
-      setStep: (step) => useLocationStore.getState().navigate(step),
-      goToLanding: () => {
-        useLocationStore.getState().navigate("landing");
-        set({ idea: "" });
-      },
-      goToInput: () => useLocationStore.getState().navigate("input"),
+      // --- Navigation actions (pure state; callers handle navigate) ---
+      clearIdea: () => set({ idea: "" }),
 
       // --- Input form actions ---
       setIdea: (idea) => set({ idea }),
@@ -66,7 +55,6 @@ export const useMarketResearchStore = create(
         const numCompetitors = selectedPlan?.numCompetitors ?? 10;
         const reportId = crypto.randomUUID();
 
-        useLocationStore.getState().navigate("analysis");
         set({
           reportId,
           isAnalyzing: true,
@@ -81,12 +69,7 @@ export const useMarketResearchStore = create(
         });
 
         try {
-          await requestMarketResearchAnalysis(
-            reportId,
-            idea,
-            numCompetitors,
-            regions,
-          );
+          await requestMarketResearchAnalysis(reportId, idea, numCompetitors, regions);
         } catch {
           set({
             isAnalyzing: false,
@@ -101,7 +84,6 @@ export const useMarketResearchStore = create(
       },
 
       resetAnalysis: () => {
-        useLocationStore.getState().navigate("input");
         set({
           reportId: null,
           isAnalyzing: false,
@@ -126,10 +108,7 @@ export const useMarketResearchStore = create(
         if (existing?.details) return;
         try {
           const response = await getCompetitorDetails(reportId, competitorId);
-          if (
-            response?.status === 202 &&
-            response?.data?.status === "retrying"
-          ) {
+          if (response?.status === 202 && response?.data?.status === "retrying") {
             set((state) => ({
               competitors: state.competitors.map((c) =>
                 c.id === competitorId ? { ...c, status: "analyzing" } : c,
@@ -142,9 +121,7 @@ export const useMarketResearchStore = create(
           if (!profile) return;
           set((state) => ({
             competitors: state.competitors.map((c) =>
-              c.id === competitorId
-                ? { ...c, ...profile, status: c.status }
-                : c,
+              c.id === competitorId ? { ...c, ...profile, status: c.status } : c,
             ),
           }));
           get()._syncSummaryStatus();
@@ -176,9 +153,7 @@ export const useMarketResearchStore = create(
           }
           if (
             state.competitors.some(
-              (competitor) =>
-                competitor.status === "queued" ||
-                competitor.status === "analyzing",
+              (competitor) => competitor.status === "queued" || competitor.status === "analyzing",
             )
           ) {
             return { summaryStatus: "waiting-competitors" };
@@ -186,15 +161,9 @@ export const useMarketResearchStore = create(
           return { summaryStatus: "summarizing" };
         }),
 
-      _addCompetitorStub: ({
-        taskId,
-        competitorId,
-        competitorName,
-        competitorUrl,
-      }) =>
+      _addCompetitorStub: ({ taskId, competitorId, competitorName, competitorUrl }) =>
         set((state) => {
-          if (state.competitors.some((c) => c.id === competitorId))
-            return state;
+          if (state.competitors.some((c) => c.id === competitorId)) return state;
           return {
             competitors: [
               ...state.competitors,
@@ -213,26 +182,20 @@ export const useMarketResearchStore = create(
               [taskId]: competitorId,
             },
             summaryStatus:
-              state.summaryStatus === "idle"
-                ? "waiting-competitors"
-                : state.summaryStatus,
+              state.summaryStatus === "idle" ? "waiting-competitors" : state.summaryStatus,
           };
         }),
 
       _mergeCompetitorProfile: (competitor) =>
         set((state) => ({
           competitors: state.competitors.map((entry) =>
-            entry.id === competitor.id
-              ? { ...entry, ...competitor, status: "done" }
-              : entry,
+            entry.id === competitor.id ? { ...entry, ...competitor, status: "done" } : entry,
           ),
         })),
 
       _updateCompetitorStatus: (id, status) =>
         set((state) => ({
-          competitors: state.competitors.map((c) =>
-            c.id === id ? { ...c, status } : c,
-          ),
+          competitors: state.competitors.map((c) => (c.id === id ? { ...c, status } : c)),
         })),
 
       _applyReport: (report) => {
@@ -265,16 +228,8 @@ export const useMarketResearchStore = create(
         });
       },
 
-      goToSummary: () => {
-        if (!get().report) return;
-        useLocationStore.getState().navigate("summary");
-      },
-
-      goToProfile: () => useLocationStore.getState().navigate("profile"),
-
       openHistoryAnalysis: async (entry) => {
         const reportId = entry.id;
-        useLocationStore.getState().navigate("summary");
         set({
           idea: entry.idea,
           reportId,

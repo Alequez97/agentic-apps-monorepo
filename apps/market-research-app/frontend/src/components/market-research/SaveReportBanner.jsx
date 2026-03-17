@@ -1,6 +1,6 @@
 import { Box, Button, HStack, Text } from "@chakra-ui/react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useAuthStore } from "../../store/useAuthStore";
-import { useMarketResearchStore } from "../../store/useMarketResearchStore";
 
 /**
  * Shown on the summary page for anonymous users only.
@@ -8,14 +8,13 @@ import { useMarketResearchStore } from "../../store/useMarketResearchStore";
  */
 export function SaveReportBanner() {
   const user = useAuthStore((s) => s.user);
-  const setReturnStep = useAuthStore((s) => s.setReturnStep);
-  const setStep = useMarketResearchStore((s) => s.setStep);
+  const navigate = useNavigate();
+  const { pathname } = useLocation();
 
   if (user) return null;
 
   const handleSignIn = () => {
-    setReturnStep("summary");
-    setStep("login");
+    navigate("/login", { state: { returnTo: pathname } });
   };
 
   return (
