@@ -12,7 +12,7 @@ Research **{{COMPETITOR_NAME}}** (`{{COMPETITOR_URL}}`) and persist a complete p
 
 - `web_search`: Search the web for real-time information about this competitor
 - `fetch_url`: Fetch the contents of a specific URL when search results are not enough
-- `write_output`: Persist the completed competitor profile JSON
+- `write_output`: Persist the completed competitor profile JSON — **both `target` and `payload` are required**
 
 ## Output tool
 
@@ -62,11 +62,7 @@ Persist a single valid JSON object:
         "items": ["Feature 1", "Feature 2", "Feature 3"]
       }
     ],
-    "missingFeatures": [
-      "Feature gap 1",
-      "Feature gap 2",
-      "Feature gap 3"
-    ],
+    "missingFeatures": ["Feature gap 1", "Feature gap 2", "Feature gap 3"],
     "pricingPlans": [
       {
         "name": "Free",

@@ -19,7 +19,7 @@ You will receive a startup idea, a session ID, and a target market. You must:
 
 - `web_search`: Search the web for real-time information about competitors, markets, and trends
 - `delegate_task`: Spawn a specialist competitor-research sub-agent for a single competitor
-- `write_output`: Persist structured outputs for this task
+- `write_output`: Persist structured outputs for this task — **both `target` and `payload` are required**
 
 ## Step 1. Identify competitors
 
@@ -70,9 +70,7 @@ Call `write_output` with `target: "report_draft"` and this payload:
 Then call `write_output` with `target: "competitor_tasks"` and this payload:
 
 ```json
-[
-  { "competitorId": "stripe", "taskId": "mrc-abc123" }
-]
+[{ "competitorId": "stripe", "taskId": "mrc-abc123" }]
 ```
 
 Use the `taskId` values returned by each `delegate_task` call.

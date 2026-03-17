@@ -3,8 +3,7 @@ function getTargetDefinitions(task) {
     case "market-research-initial":
       return {
         report_draft: {
-          description:
-            "Persist the initial report draft JSON for the current session.",
+          description: "Persist the initial report draft JSON for the current session.",
           save: ({ marketResearchRepository, sessionId, payload }) =>
             marketResearchRepository.saveReport(sessionId, payload),
         },
@@ -18,26 +17,15 @@ function getTargetDefinitions(task) {
     case "market-research-competitor":
       return {
         competitor_profile: {
-          description:
-            "Persist the researched competitor profile JSON for the current session.",
-          save: ({
-            marketResearchRepository,
-            sessionId,
-            competitorId,
-            payload,
-          }) =>
-            marketResearchRepository.saveCompetitorProfile(
-              sessionId,
-              competitorId,
-              payload,
-            ),
+          description: "Persist the researched competitor profile JSON for the current session.",
+          save: ({ marketResearchRepository, sessionId, competitorId, payload }) =>
+            marketResearchRepository.saveCompetitorProfile(sessionId, competitorId, payload),
         },
       };
     case "market-research-summary":
       return {
         opportunity: {
-          description:
-            "Persist the market opportunity verdict JSON for the current session.",
+          description: "Persist the market opportunity verdict JSON for the current session.",
           save: ({ marketResearchRepository, sessionId, payload }) =>
             marketResearchRepository.saveOpportunity(sessionId, payload),
         },
@@ -47,10 +35,7 @@ function getTargetDefinitions(task) {
   }
 }
 
-export function createMarketResearchOutputToolExecutor({
-  task,
-  marketResearchRepository,
-}) {
+export function createMarketResearchOutputToolExecutor({ task, marketResearchRepository }) {
   const targets = getTargetDefinitions(task);
   const targetNames = Object.keys(targets);
 
@@ -67,11 +52,10 @@ export function createMarketResearchOutputToolExecutor({
           },
           payload: {
             type: "object",
-            description:
-              "Structured JSON payload to persist for the selected target.",
+            description: "Structured JSON payload to persist for the selected target.",
           },
         },
-        required: ["target"],
+        required: ["target", "payload"],
       },
     ],
 

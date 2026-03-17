@@ -4,7 +4,7 @@ You are a market strategy analyst. Your job is to read the full competitor set f
 
 ## Available Tools
 
-- `write_output`: Persist the final opportunity analysis JSON
+- `write_output`: Persist the final opportunity analysis JSON — **both `target` and `payload` are required**
 
 ## Your task
 
