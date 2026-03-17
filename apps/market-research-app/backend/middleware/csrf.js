@@ -18,7 +18,7 @@ function buildCsrfCookieOptions() {
   return {
     httpOnly: false,
     secure: process.env.NODE_ENV === "production",
-    sameSite: "strict",
+    sameSite: "lax",
     path: "/",
   };
 }
