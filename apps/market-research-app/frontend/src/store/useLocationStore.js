@@ -11,28 +11,21 @@ const STEP_TO_PATH = {
   login: "/login",
 };
 
-const PATH_TO_STEP = Object.fromEntries(
-  Object.entries(STEP_TO_PATH).map(([step, path]) => [path, step]),
-);
-
-function pathToStep(pathname) {
-  return PATH_TO_STEP[pathname] ?? "landing";
-}
-
 export const useLocationStore = create((set, get) => ({
-  step: pathToStep(window.location.pathname),
+  step: "landing",
 
   /**
    * Call once on app mount. Wires the popstate listener so browser
    * back / forward updates the in-app step. Returns a cleanup function.
    */
   init: () => {
-    // Stamp the current history entry so popstate always has state
+    // Stamp the current history entry so popstate always has state.
+    // Always start at landing — deep paths have no recoverable app state.
     const currentStep = get().step;
-    window.history.replaceState({ step: currentStep }, "", window.location.pathname);
+    window.history.replaceState({ step: currentStep }, "", STEP_TO_PATH[currentStep] ?? "/");
 
     const handlePopState = (event) => {
-      const step = event.state?.step ?? pathToStep(window.location.pathname);
+      const step = event.state?.step ?? "landing";
       set({ step });
     };
 
