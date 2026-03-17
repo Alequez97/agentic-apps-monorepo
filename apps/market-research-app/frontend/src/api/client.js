@@ -1,4 +1,5 @@
 import axios from "axios";
+import { API_BASE_URL } from "../config/runtime";
 
 function getCookie(name) {
   if (typeof document === "undefined") {
@@ -15,7 +16,7 @@ function getCookie(name) {
 }
 
 const client = axios.create({
-  baseURL: "/api",
+  baseURL: API_BASE_URL,
   withCredentials: true,
 });
 

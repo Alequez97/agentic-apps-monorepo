@@ -9,8 +9,7 @@ import {
 import { useProfileStore } from "./useProfileStore";
 import { useTaskProgressStore } from "./useTaskProgressStore";
 import { getMarketResearchReport } from "../api/market-research";
-
-const SOCKET_URL = window.location.origin;
+import { SOCKET_ORIGIN, SOCKET_PATH } from "../config/runtime";
 
 export const useSocketStore = create((set, get) => ({
   socket: null,
@@ -19,11 +18,13 @@ export const useSocketStore = create((set, get) => ({
   initSocket: () => {
     if (get().socket) return;
 
-    const socket = io(SOCKET_URL, {
+    const socket = io(SOCKET_ORIGIN, {
+      path: SOCKET_PATH,
       autoConnect: true,
       reconnection: true,
       reconnectionDelay: 1000,
       reconnectionAttempts: 5,
+      withCredentials: true,
     });
 
     set({ socket });

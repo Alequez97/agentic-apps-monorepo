@@ -13,7 +13,7 @@ export default defineConfig({
         target: `http://localhost:${backendPort}`,
         changeOrigin: true,
       },
-      "/socket.io": {
+      "/api/socket.io": {
         target: `http://localhost:${backendPort}`,
         changeOrigin: true,
         ws: true,

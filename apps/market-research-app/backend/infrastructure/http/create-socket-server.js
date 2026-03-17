@@ -8,6 +8,7 @@ function getUserRoom(userId) {
 
 export function createSocketServer({ httpServer, config }) {
   const io = new Server(httpServer, {
+    path: "/api/socket.io",
     cors: {
       origin: (origin, callback) => {
         if (isAllowedOrigin(origin, config.allowedOrigins)) {
