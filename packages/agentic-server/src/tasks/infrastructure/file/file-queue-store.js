@@ -85,7 +85,7 @@ async function listTasks(queueDir, filters = {}) {
   return tasks.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 }
 
-async function moveToRunning(queueDir, taskId) {
+async function claimTask(queueDir, taskId) {
   const pendingFilePath = taskPath(queueDir, TASK_FOLDERS.PENDING, taskId);
   const runningFilePath = taskPath(queueDir, TASK_FOLDERS.RUNNING, taskId);
 
@@ -101,7 +101,7 @@ async function moveToRunning(queueDir, taskId) {
   return task;
 }
 
-async function moveToCompleted(queueDir, taskId) {
+async function completeTask(queueDir, taskId) {
   const runningFilePath = taskPath(queueDir, TASK_FOLDERS.RUNNING, taskId);
   const completedFilePath = taskPath(queueDir, TASK_FOLDERS.COMPLETED, taskId);
 
@@ -117,7 +117,7 @@ async function moveToCompleted(queueDir, taskId) {
   return task;
 }
 
-async function moveToFailed(queueDir, taskId, error) {
+async function failTask(queueDir, taskId, error) {
   const runningFilePath = taskPath(queueDir, TASK_FOLDERS.RUNNING, taskId);
   const pendingFilePath = taskPath(queueDir, TASK_FOLDERS.PENDING, taskId);
   const failedFilePath = taskPath(queueDir, TASK_FOLDERS.FAILED, taskId);
@@ -143,7 +143,7 @@ async function moveToFailed(queueDir, taskId, error) {
   return task;
 }
 
-async function moveToCanceled(queueDir, taskId) {
+async function cancelTask(queueDir, taskId) {
   const runningFilePath = taskPath(queueDir, TASK_FOLDERS.RUNNING, taskId);
   const pendingFilePath = taskPath(queueDir, TASK_FOLDERS.PENDING, taskId);
   const canceledFilePath = taskPath(queueDir, TASK_FOLDERS.CANCELED, taskId);
@@ -180,7 +180,7 @@ async function moveToCanceled(queueDir, taskId) {
   return { success: true, task };
 }
 
-async function requeueRunningTask(queueDir, taskId) {
+async function requeueTask(queueDir, taskId) {
   const runningFilePath = taskPath(queueDir, TASK_FOLDERS.RUNNING, taskId);
   const pendingFilePath = taskPath(queueDir, TASK_FOLDERS.PENDING, taskId);
 
@@ -343,11 +343,11 @@ export function createFileQueueStore({ queueDir }) {
     listPending: () => listPending(queueDir),
     listRunning: () => listRunning(queueDir),
     listTasks: (filters) => listTasks(queueDir, filters),
-    moveToRunning: (taskId) => moveToRunning(queueDir, taskId),
-    moveToCompleted: (taskId) => moveToCompleted(queueDir, taskId),
-    moveToFailed: (taskId, error) => moveToFailed(queueDir, taskId, error),
-    moveToCanceled: (taskId) => moveToCanceled(queueDir, taskId),
-    requeueRunningTask: (taskId) => requeueRunningTask(queueDir, taskId),
+    claimTask: (taskId) => claimTask(queueDir, taskId),
+    completeTask: (taskId) => completeTask(queueDir, taskId),
+    failTask: (taskId, error) => failTask(queueDir, taskId, error),
+    cancelTask: (taskId) => cancelTask(queueDir, taskId),
+    requeueTask: (taskId) => requeueTask(queueDir, taskId),
     restartTask: (taskId) => restartTask(queueDir, taskId),
     deleteTask: (taskId) => deleteTask(queueDir, taskId),
   };
@@ -359,11 +359,11 @@ export {
   listPending,
   listRunning,
   listTasks,
-  moveToRunning,
-  moveToCompleted,
-  moveToFailed,
-  moveToCanceled,
-  requeueRunningTask,
+  claimTask,
+  completeTask,
+  failTask,
+  cancelTask,
+  requeueTask,
   restartTask,
   deleteTask,
 };

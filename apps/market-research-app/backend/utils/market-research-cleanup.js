@@ -1,13 +1,12 @@
 import * as logger from "./logger.js";
-import { listSessions, deleteSession } from "../persistence/market-research.js";
 
 const TTL_MS = 2 * 24 * 60 * 60 * 1000; // 2 days
 const INTERVAL_MS = 60 * 60 * 1000; // run every hour
 
 let cleanupInterval = null;
 
-export async function cleanupExpiredSessions() {
-  const sessions = await listSessions();
+export async function cleanupExpiredSessions({ marketResearchRepository }) {
+  const sessions = await marketResearchRepository.listSessions();
   if (sessions.length === 0) return;
 
   const cutoff = Date.now() - TTL_MS;
@@ -15,7 +14,7 @@ export async function cleanupExpiredSessions() {
 
   for (const session of sessions) {
     if (session.lastAccessedAt < cutoff) {
-      await deleteSession(session.sessionId);
+      await marketResearchRepository.deleteSession(session.sessionId);
       removed++;
       logger.debug("Expired market research session deleted", {
         sessionId: session.sessionId,
@@ -32,10 +31,10 @@ export async function cleanupExpiredSessions() {
   }
 }
 
-export function startCleanupJob() {
+export function startCleanupJob({ marketResearchRepository }) {
   if (cleanupInterval) return;
 
-  cleanupExpiredSessions().catch((err) => {
+  cleanupExpiredSessions({ marketResearchRepository }).catch((err) => {
     logger.error("Market research cleanup error on startup", {
       error: err.message,
       component: "MarketResearchCleanup",
@@ -43,7 +42,7 @@ export function startCleanupJob() {
   });
 
   cleanupInterval = setInterval(() => {
-    cleanupExpiredSessions().catch((err) => {
+    cleanupExpiredSessions({ marketResearchRepository }).catch((err) => {
       logger.error("Market research cleanup error", {
         error: err.message,
         component: "MarketResearchCleanup",

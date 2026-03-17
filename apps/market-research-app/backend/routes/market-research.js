@@ -1,17 +1,9 @@
 import { Router } from "express";
 import * as logger from "../utils/logger.js";
-import {
-  upsertSession,
-  getSession,
-  getMarketResearchReport,
-  getCompetitorProfile,
-  listSessions,
-} from "../persistence/market-research.js";
-import { getSubscriptionPlanDetails } from "../services/subscription.js";
 import { requireAuth } from "../middleware/auth.js";
 
-async function requireOwnedReport(req, res, reportId) {
-  const reportSession = await getSession(reportId);
+async function requireOwnedReport(req, res, reportId, marketResearchRepository) {
+  const reportSession = await marketResearchRepository.getSession(reportId);
 
   if (!reportSession) {
     res.status(404).json({ error: "Report not found or expired" });
@@ -26,7 +18,11 @@ async function requireOwnedReport(req, res, reportId) {
   return reportSession;
 }
 
-export function createMarketResearchRouter({ taskQueue }) {
+export function createMarketResearchRouter({
+  taskQueue,
+  marketResearchRepository,
+  subscriptionService,
+}) {
   const router = Router();
 
   // GET /api/market-research
@@ -35,7 +31,7 @@ export function createMarketResearchRouter({ taskQueue }) {
   router.get("/", requireAuth, async (req, res) => {
     const { reportId } = req.query;
     try {
-      const sessions = await listSessions();
+      const sessions = await marketResearchRepository.listSessions();
       let filtered = reportId
         ? sessions.filter((entry) => entry.sessionId === reportId)
         : sessions;
@@ -76,7 +72,7 @@ export function createMarketResearchRouter({ taskQueue }) {
     }
 
     try {
-      const reportSession = await upsertSession(
+      const reportSession = await marketResearchRepository.upsertSession(
         reportId,
         idea.trim(),
         state,
@@ -102,7 +98,12 @@ export function createMarketResearchRouter({ taskQueue }) {
     const { reportId } = req.params;
 
     try {
-      const reportSession = await requireOwnedReport(req, res, reportId);
+      const reportSession = await requireOwnedReport(
+        req,
+        res,
+        reportId,
+        marketResearchRepository,
+      );
       if (!reportSession) return;
       return res.json({ session: reportSession });
     } catch (error) {
@@ -131,14 +132,16 @@ export function createMarketResearchRouter({ taskQueue }) {
     const normalizedRegions =
       Array.isArray(regions) && regions.length > 0 ? regions : null;
 
-    const plan = await getSubscriptionPlanDetails(req.userId);
+    const plan = await subscriptionService.getSubscriptionPlanDetails(
+      req.userId,
+    );
     if (!plan) {
       return res.status(403).json({ error: "No subscription plan found" });
     }
     const numCompetitors = plan.numCompetitors;
 
     try {
-      await upsertSession(
+      await marketResearchRepository.upsertSession(
         reportId,
         idea.trim(),
         {
@@ -199,10 +202,18 @@ export function createMarketResearchRouter({ taskQueue }) {
       const { reportId, competitorId } = req.params;
 
       try {
-        const reportSession = await requireOwnedReport(req, res, reportId);
+        const reportSession = await requireOwnedReport(
+          req,
+          res,
+          reportId,
+          marketResearchRepository,
+        );
         if (!reportSession) return;
 
-        const profile = await getCompetitorProfile(reportId, competitorId);
+        const profile = await marketResearchRepository.getCompetitorProfile(
+          reportId,
+          competitorId,
+        );
         if (!profile) {
           return res.status(404).json({ error: "Competitor profile not found" });
         }
@@ -233,10 +244,15 @@ export function createMarketResearchRouter({ taskQueue }) {
     const { reportId } = req.params;
 
     try {
-      const reportSession = await requireOwnedReport(req, res, reportId);
+      const reportSession = await requireOwnedReport(
+        req,
+        res,
+        reportId,
+        marketResearchRepository,
+      );
       if (!reportSession) return;
 
-      const report = await getMarketResearchReport(reportId);
+      const report = await marketResearchRepository.getReport(reportId);
       if (!report) {
         return res.status(404).json({
           error: "Report not found",

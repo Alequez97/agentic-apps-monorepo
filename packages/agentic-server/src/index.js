@@ -27,11 +27,11 @@ export {
   listPending,
   listRunning,
   listTasks,
-  moveToRunning,
-  moveToCompleted,
-  moveToFailed,
-  moveToCanceled,
-  requeueRunningTask,
+  claimTask,
+  completeTask,
+  failTask,
+  cancelTask,
+  requeueTask,
   restartTask,
   deleteTask,
   createFileQueueStore,
@@ -43,6 +43,13 @@ export {
 export { TASK_STATUS, TASK_FOLDERS } from "./tasks/constants/task-status.js";
 export { TASK_ERROR_CODES } from "./tasks/constants/task-error-codes.js";
 export { TASK_EVENTS } from "./tasks/constants/task-events.js";
+export {
+  assertTaskQueueStoreContract,
+  assertTaskProgressStoreContract,
+  assertTaskLogStoreContract,
+  assertTaskEventPublisherContract,
+  assertTaskSchedulerContract,
+} from "./tasks/contracts/index.js";
 
 // Persistence helpers
 export { tryReadJsonFile, appendRevision } from "./persistence/utils.js";

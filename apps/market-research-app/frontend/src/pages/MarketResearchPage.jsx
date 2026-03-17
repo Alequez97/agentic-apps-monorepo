@@ -1,3 +1,4 @@
+import { useLocationStore } from "../store/useLocationStore";
 import { useMarketResearchStore } from "../store/useMarketResearchStore";
 import { LandingPage } from "../components/market-research/LandingPage";
 import { IdeaInputPage } from "../components/market-research/IdeaInputPage";
@@ -17,7 +18,7 @@ const STEP_VIEWS = {
 };
 
 export default function MarketResearchPage() {
-  const step = useMarketResearchStore((s) => s.step);
+  const step = useLocationStore((s) => s.step);
   const View = STEP_VIEWS[step] ?? LandingPage;
   return (
     <>

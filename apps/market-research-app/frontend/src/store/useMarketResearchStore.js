@@ -5,6 +5,7 @@ import {
   getMarketResearchReport as fetchMarketResearchReport,
   getCompetitorDetails,
 } from "../api/market-research";
+import { useLocationStore } from "./useLocationStore";
 
 function logLineToKind(log) {
   const lower = log.toLowerCase();
@@ -26,9 +27,6 @@ export { logLineToKind };
 export const useMarketResearchStore = create(
   persist(
     (set, get) => ({
-      // --- Navigation ---
-      step: "landing",
-
       // --- Input form ---
       idea: "",
       regions: null,
@@ -48,9 +46,12 @@ export const useMarketResearchStore = create(
       competitorTaskMap: {},
 
       // --- Navigation actions ---
-      setStep: (step) => set({ step }),
-      goToLanding: () => set({ step: "landing", idea: "" }),
-      goToInput: () => set({ step: "input" }),
+      setStep: (step) => useLocationStore.getState().navigate(step),
+      goToLanding: () => {
+        useLocationStore.getState().navigate("landing");
+        set({ idea: "" });
+      },
+      goToInput: () => useLocationStore.getState().navigate("input"),
 
       // --- Input form actions ---
       setIdea: (idea) => set({ idea }),
@@ -65,8 +66,8 @@ export const useMarketResearchStore = create(
         const numCompetitors = selectedPlan?.numCompetitors ?? 10;
         const reportId = crypto.randomUUID();
 
+        useLocationStore.getState().navigate("analysis");
         set({
-          step: "analysis",
           reportId,
           isAnalyzing: true,
           isAnalysisComplete: false,
@@ -94,8 +95,8 @@ export const useMarketResearchStore = create(
       },
 
       resetAnalysis: () => {
+        useLocationStore.getState().navigate("input");
         set({
-          step: "input",
           reportId: null,
           isAnalyzing: false,
           isAnalysisComplete: false,
@@ -257,14 +258,14 @@ export const useMarketResearchStore = create(
         });
       },
 
-      goToSummary: () => set({ step: "summary" }),
+      goToSummary: () => useLocationStore.getState().navigate("summary"),
 
-      goToProfile: () => set({ step: "profile" }),
+      goToProfile: () => useLocationStore.getState().navigate("profile"),
 
       openHistoryAnalysis: async (entry) => {
         const reportId = entry.id;
+        useLocationStore.getState().navigate("summary");
         set({
-          step: "summary",
           idea: entry.idea,
           reportId,
           report: null,

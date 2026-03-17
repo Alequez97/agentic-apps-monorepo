@@ -1,8 +1,5 @@
-import fs from "fs/promises";
 import { PROGRESS_STAGES } from "@jfs/llm-core";
-import { tryReadJsonFile } from "@jfs/agentic-server";
 import { APP_EVENTS } from "../../constants/app-events.js";
-import * as marketResearchPersistence from "../../persistence/market-research.js";
 import * as logger from "../../utils/logger.js";
 import { buildMarketResearchHandler } from "./market-research-handler-common.js";
 
@@ -10,19 +7,18 @@ export async function marketResearchSummaryHandler(
   task,
   taskLogger,
   agent,
-  { taskEventPublisher },
+  { taskEventPublisher, marketResearchRepository },
 ) {
   const { sessionId, idea } = task.params || {};
 
-  const competitorTasks = await tryReadJsonFile(
-    marketResearchPersistence.getMarketResearchCompetitorTasksPath(sessionId),
-    `${sessionId} competitor tasks`,
+  const competitorTasks = await marketResearchRepository.getCompetitorTasks(
+    sessionId,
   );
   if (!Array.isArray(competitorTasks) || competitorTasks.length === 0) {
     throw new Error("competitor-tasks.json is empty or invalid");
   }
 
-  const competitors = await marketResearchPersistence.getCompetitorProfiles(
+  const competitors = await marketResearchRepository.getCompetitorProfiles(
     sessionId,
     competitorTasks.map((entry) => entry.competitorId).filter(Boolean),
   );
@@ -36,8 +32,6 @@ export async function marketResearchSummaryHandler(
     "",
     "Competitor profiles JSON:",
     competitorProfilesJson,
-    "",
-    `Write the result to: market-research/${sessionId}/opportunity.json`,
   ].join("\n");
 
   const onStart = () => {
@@ -49,14 +43,8 @@ export async function marketResearchSummaryHandler(
   const onComplete = async () => {
     try {
       const [report, opportunity] = await Promise.all([
-        tryReadJsonFile(
-          marketResearchPersistence.getMarketResearchReportPath(sessionId),
-          `${sessionId} report`,
-        ),
-        tryReadJsonFile(
-          marketResearchPersistence.getMarketResearchOpportunityPath(sessionId),
-          `${sessionId} opportunity`,
-        ),
+        marketResearchRepository.getReport(sessionId),
+        marketResearchRepository.getOpportunity(sessionId),
       ]);
 
       if (!report) throw new Error("report.json is empty or invalid");
@@ -88,17 +76,9 @@ export async function marketResearchSummaryHandler(
         completedAt: new Date().toISOString(),
       };
 
-      await fs.mkdir(
-        marketResearchPersistence.getMarketResearchSessionDir(sessionId),
-        { recursive: true },
-      );
-      await fs.writeFile(
-        marketResearchPersistence.getMarketResearchReportPath(sessionId),
-        JSON.stringify(completedReport, null, 2),
-        "utf-8",
-      );
+      await marketResearchRepository.saveReport(sessionId, completedReport);
 
-      await marketResearchPersistence.markSessionComplete(
+      await marketResearchRepository.markSessionComplete(
         sessionId,
         mergedCompetitors.length,
       );

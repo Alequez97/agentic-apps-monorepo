@@ -20,6 +20,30 @@ Example of the current anti-pattern:
 
 That means the handler is coupled to file layout, file naming, and serialization format. A clean production design must remove that knowledge from handlers and routes.
 
+## Status update
+
+The codebase has already moved part of the way toward this plan.
+
+Completed or partially completed:
+
+- queue store contracts now exist under `packages/agentic-server/src/tasks/contracts/`
+- file queue runtime now uses queue-store-style method names such as `claimTask`, `completeTask`, and `failTask`
+- app handlers and routes now use a `marketResearchRepository` dependency instead of reading business JSON files directly
+- market research output persistence now goes through logical output tools instead of raw `outputFile` paths
+- app-side persistence has been consolidated under `apps/market-research-app/backend/infrastructure/persistence/`
+- provider selection now exists for both queue storage and market research persistence
+- initial Mongo scaffolding exists for:
+  - `packages/agentic-server/src/tasks/infrastructure/mongo/`
+  - `apps/market-research-app/backend/infrastructure/persistence/mongo/`
+
+Still not production-ready:
+
+- Mongo-backed queue and repository paths have not yet been validated end-to-end in a live environment
+- task progress and task logs are still file-backed
+- delegation/bootstrap context is not yet persisted in a distributed-safe durable store
+
+The remaining sections in this document are still useful as direction, but some path references and some "current state" wording describe the pre-refactor baseline.
+
 ## Filesystem-coupled areas
 
 ### 1. Queue persistence is fully file-backed

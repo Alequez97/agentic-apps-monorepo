@@ -53,6 +53,23 @@ const config = {
   // Delegation request files temp prefix relative to workingDirectory.
   delegationTempPrefix: `${dataRootName}/temp`,
 
+  storage: {
+    queue: {
+      provider: process.env.TASK_QUEUE_PROVIDER || "file",
+      mongo: {
+        uri: process.env.TASK_QUEUE_MONGODB_URI || null,
+        dbName: process.env.TASK_QUEUE_MONGODB_DB_NAME || null,
+      },
+    },
+    app: {
+      provider: process.env.APP_PERSISTENCE_PROVIDER || "file",
+      mongo: {
+        uri: process.env.APP_MONGODB_URI || null,
+        dbName: process.env.APP_MONGODB_DB_NAME || null,
+      },
+    },
+  },
+
   apiKeys: {
     anthropic: process.env.ANTHROPIC_API_KEY,
     openai: process.env.OPENAI_API_KEY,

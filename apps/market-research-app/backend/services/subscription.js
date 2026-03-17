@@ -1,5 +1,3 @@
-import { getUser } from "../persistence/users.js";
-
 export const PLANS = {
   free: {
     name: "free",
@@ -43,23 +41,35 @@ export const PLANS = {
   },
 };
 
-async function getSubscription(userId) {
-  if (!userId) {
-    return null;
+export function createSubscriptionService({ subscriptionRepository }) {
+  async function getSubscription(userId) {
+    if (!userId) {
+      return null;
+    }
+
+    const subscription = await subscriptionRepository.getSubscription(userId);
+    if (subscription) {
+      return subscription;
+    }
+
+    return subscriptionRepository.upsertSubscription(userId, {
+      plan: "free",
+      status: "active",
+    });
   }
 
-  const user = await getUser(userId);
-  if (!user) {
-    return null;
-  }
+  return {
+    async getSubscriptionPlanDetails(userId) {
+      const subscription = await getSubscription(userId);
+      if (!subscription) {
+        return null;
+      }
+      const planName = subscription.plan ?? "free";
+      return PLANS[planName] ?? PLANS.free;
+    },
 
-  return user.plan ?? "free";
-}
-
-export async function getSubscriptionPlanDetails(userId) {
-  const planName = await getSubscription(userId);
-  if (!planName) {
-    return null;
-  }
-  return PLANS[planName] ?? PLANS.free;
+    async getSubscription(userId) {
+      return getSubscription(userId);
+    },
+  };
 }

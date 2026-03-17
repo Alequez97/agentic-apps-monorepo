@@ -1,5 +1,3 @@
-import { tryReadJsonFile } from "@jfs/agentic-server";
-import * as marketResearchPersistence from "../../persistence/market-research.js";
 import * as logger from "../../utils/logger.js";
 import { buildMarketResearchHandler } from "./market-research-handler-common.js";
 
@@ -7,7 +5,7 @@ export function marketResearchInitialHandler(
   task,
   taskLogger,
   agent,
-  { taskScheduler },
+  { taskScheduler, marketResearchRepository },
 ) {
   const { sessionId, idea } = task.params || {};
 
@@ -19,16 +17,9 @@ export function marketResearchInitialHandler(
     let report;
 
     try {
-      competitorTasks = await tryReadJsonFile(
-        marketResearchPersistence.getMarketResearchCompetitorTasksPath(
-          sessionId,
-        ),
-        `${sessionId} competitor tasks`,
-      );
-      report = await tryReadJsonFile(
-        marketResearchPersistence.getMarketResearchReportPath(sessionId),
-        `${sessionId} report`,
-      );
+      competitorTasks =
+        await marketResearchRepository.getCompetitorTasks(sessionId);
+      report = await marketResearchRepository.getReport(sessionId);
     } catch (error) {
       logger.warn("Failed to queue market research summary task", {
         component: "MarketResearchInitial",

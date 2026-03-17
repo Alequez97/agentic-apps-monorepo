@@ -1,6 +1,4 @@
-import { tryReadJsonFile } from "@jfs/agentic-server";
 import { APP_EVENTS } from "../../constants/app-events.js";
-import * as marketResearchPersistence from "../../persistence/market-research.js";
 import * as logger from "../../utils/logger.js";
 import { buildMarketResearchHandler } from "./market-research-handler-common.js";
 
@@ -8,7 +6,7 @@ export function marketResearchCompetitorHandler(
   task,
   taskLogger,
   agent,
-  { taskEventPublisher },
+  { taskEventPublisher, marketResearchRepository },
 ) {
   const {
     sessionId,
@@ -27,21 +25,16 @@ export function marketResearchCompetitorHandler(
     "",
     `Session ID: ${sessionId}`,
     `Competitor ID: ${competitorId}`,
-    "",
-    `Write the complete profile JSON to: market-research/${sessionId}/competitors/${competitorId}.json`,
   ]
     .filter(Boolean)
     .join("\n");
 
   const onComplete = async () => {
-    const competitorPath =
-      marketResearchPersistence.getMarketResearchCompetitorProfilePath(
+    try {
+      const competitor = await marketResearchRepository.getCompetitorProfile(
         sessionId,
         competitorId,
       );
-
-    try {
-      const competitor = await tryReadJsonFile(competitorPath, competitorId);
       if (!competitor) {
         throw new Error("Competitor profile is empty or invalid");
       }

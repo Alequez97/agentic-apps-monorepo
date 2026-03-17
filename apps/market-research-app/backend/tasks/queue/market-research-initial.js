@@ -1,8 +1,8 @@
-import config from "../../config.js";
 import { TASK_TYPES } from "../../constants/task-types.js";
 import { TASK_STATUS } from "@jfs/agentic-server";
 import * as logger from "../../utils/logger.js";
 import { generateTaskId } from "../utils.js";
+import config from "../../config.js";
 
 /**
  * Queue a market research initial task.
@@ -33,7 +33,6 @@ export async function queueMarketResearchInitialTask(
   }
 
   const taskId = generateTaskId(TASK_TYPES.MARKET_RESEARCH_INITIAL);
-  const progressFile = taskProgressStore.getProgressLocation(taskId);
 
   const task = {
     id: taskId,
@@ -54,8 +53,6 @@ export async function queueMarketResearchInitialTask(
       reasoningEffort: taskConfig.reasoningEffort,
     },
     systemInstructionFile: "market-research-initial.md",
-    outputFile: `${config.allowedOutputPrefix}/market-research/${sessionId}/report.json`,
-    progressFile,
   };
 
   await taskProgressStore.initialize(taskId);

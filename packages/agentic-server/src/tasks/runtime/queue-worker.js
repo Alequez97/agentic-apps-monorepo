@@ -1,10 +1,12 @@
 import { TASK_STATUS } from "../constants/task-status.js";
+import { assertTaskQueueStoreContract } from "../contracts/index.js";
 import * as logger from "../../utils/logger.js";
 
 const POLL_INTERVAL_MS = 2000;
 const MAX_CONCURRENT = 5;
 
 export function createQueueWorker({ queueStore, taskOrchestrator }) {
+  assertTaskQueueStoreContract(queueStore);
   let pollTimer = null;
   let active = false;
 
@@ -14,6 +16,7 @@ export function createQueueWorker({ queueStore, taskOrchestrator }) {
     }
     for (const depId of task.dependsOn) {
       const dep = await queueStore.readTask(depId);
+      // Dependency state only requires read access; keep using the shared store.
       if (!dep) return false;
       if (
         dep.status !== TASK_STATUS.COMPLETED &&
@@ -43,7 +46,7 @@ export function createQueueWorker({ queueStore, taskOrchestrator }) {
           if (!(await areDependenciesMet(task))) continue;
 
           try {
-            await queueStore.moveToRunning(task.id);
+            await queueStore.claimTask(task.id);
           } catch (error) {
             logger.error(`Queue worker: failed to claim task ${task.id}`, {
               error,

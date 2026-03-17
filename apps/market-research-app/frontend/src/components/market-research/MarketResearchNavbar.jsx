@@ -1,3 +1,4 @@
+import { useLocationStore } from "../../store/useLocationStore";
 import { useMarketResearchStore } from "../../store/useMarketResearchStore";
 import { AppNavbar } from "./AppNavbar";
 import { NavAuthControls } from "./NavAuthControls";
@@ -8,7 +9,7 @@ import { NavAuthControls } from "./NavAuthControls";
  * Used once in MarketResearchPage.
  */
 export function MarketResearchNavbar() {
-  const step = useMarketResearchStore((s) => s.step);
+  const step = useLocationStore((s) => s.step);
   const goToLanding = useMarketResearchStore((s) => s.goToLanding);
 
   const onLogoClick = step === "landing" ? undefined : goToLanding;

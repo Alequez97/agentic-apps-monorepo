@@ -16,6 +16,7 @@
     "express": "^4.21.1",
     "google-auth-library": "^9.14.2",
     "jsonwebtoken": "^9.0.2",
+    "mongoose": "^8.19.1",
     "socket.io": "^4.7.5",
     "uuid": "^9.0.1"
   }

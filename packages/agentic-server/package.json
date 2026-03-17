@@ -6,6 +6,7 @@
   "main": "src/index.js",
   "dependencies": {
     "@jfs/llm-core": "*",
+    "mongoose": "^8.19.1",
     "uuid": "^9.0.0",
     "winston": "^3.11.0"
   }

@@ -1,6 +1,11 @@
 import { TASK_EVENTS } from "../constants/task-events.js";
 import { TASK_ERROR_CODES } from "../constants/task-error-codes.js";
 import { TASK_STATUS } from "../constants/task-status.js";
+import {
+  assertTaskQueueStoreContract,
+  assertTaskEventPublisherContract,
+  assertTaskProgressStoreContract,
+} from "../contracts/index.js";
 import * as logger from "../../utils/logger.js";
 
 export class TaskOrchestrator {
@@ -23,9 +28,9 @@ export class TaskOrchestrator {
     if (!taskProgressStore) {
       throw new Error("TaskOrchestrator requires taskProgressStore");
     }
-    if (!taskEventPublisher) {
-      throw new Error("TaskOrchestrator requires taskEventPublisher");
-    }
+    assertTaskQueueStoreContract(queueStore);
+    assertTaskProgressStoreContract(taskProgressStore);
+    assertTaskEventPublisherContract(taskEventPublisher);
 
     this.resolveTaskHandler = resolveTaskHandler;
     this.queueStore = queueStore;
@@ -82,17 +87,18 @@ export class TaskOrchestrator {
       };
     }
 
+    let activeTask = task;
     if (task.status === TASK_STATUS.PENDING) {
-      await this.queueStore.moveToRunning(taskId);
+      activeTask = await this.queueStore.claimTask(taskId);
     }
 
-    this.publishTaskEvent(TASK_EVENTS.STARTED, { task });
+    this.publishTaskEvent(TASK_EVENTS.STARTED, { task: activeTask });
 
     if (!this.taskRunner.isAvailable()) {
       const error = "No LLM API keys configured";
-      await this.queueStore.moveToFailed(taskId, error);
+      await this.queueStore.failTask(taskId, error);
       this.publishTaskEvent(TASK_EVENTS.FAILED, {
-        task,
+        task: activeTask,
         error,
         code: TASK_ERROR_CODES.NOT_FOUND,
       });
@@ -120,7 +126,7 @@ export class TaskOrchestrator {
     let result;
     try {
       result = await this.taskRunner.execute(
-        task,
+        activeTask,
         buildHandler,
         publishTaskEvent,
         controller.signal,
@@ -132,9 +138,9 @@ export class TaskOrchestrator {
       }
 
       const executionError = error?.message || "Task execution failed";
-      await this.queueStore.moveToFailed(taskId, executionError);
+      await this.queueStore.failTask(taskId, executionError);
       this.publishTaskEvent(TASK_EVENTS.FAILED, {
-        task,
+        task: activeTask,
         error: executionError,
         code: null,
         timestamp: new Date().toISOString(),
@@ -145,19 +151,22 @@ export class TaskOrchestrator {
     }
 
     if (result.success) {
-      await this.queueStore.moveToCompleted(taskId);
+      await this.queueStore.completeTask(taskId);
       await this.taskProgressStore.clear(taskId);
       this.publishTaskEvent(TASK_EVENTS.COMPLETED, {
-        task: { ...task, status: TASK_STATUS.COMPLETED },
+        task: { ...activeTask, status: TASK_STATUS.COMPLETED },
         timestamp: new Date().toISOString(),
       });
     } else if (result.cancelled) {
       await this.taskProgressStore.clear(taskId);
       return result;
     } else {
-      await this.queueStore.moveToFailed(taskId, result.error || "Task execution failed");
+      await this.queueStore.failTask(
+        taskId,
+        result.error || "Task execution failed",
+      );
       this.publishTaskEvent(TASK_EVENTS.FAILED, {
-        task,
+        task: activeTask,
         error: result.error || "Task execution failed",
         timestamp: new Date().toISOString(),
       });
@@ -188,7 +197,7 @@ export class TaskOrchestrator {
       });
     }
 
-    const result = await this.queueStore.moveToCanceled(taskId);
+    const result = await this.queueStore.cancelTask(taskId);
     if (!result.success) return result;
 
     this.publishTaskEvent(TASK_EVENTS.CANCELED, {
@@ -231,7 +240,7 @@ export class TaskOrchestrator {
       const recoveredIds = [];
       for (const task of runningTasks) {
         try {
-          await this.queueStore.requeueRunningTask(task.id);
+          await this.queueStore.requeueTask(task.id);
           logger.info(`Recovered task: ${task.id} (type: ${task.type})`, {
             component: "TaskOrchestrator",
           });

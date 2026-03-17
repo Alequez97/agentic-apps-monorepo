@@ -8,10 +8,11 @@ import cookieParser from "cookie-parser";
 import {
   TaskOrchestrator,
   createQueueProcessor,
-  createFileQueueStore,
-  createFileTaskProgressStore,
   LLMTaskRunner,
   TASK_EVENTS,
+  assertTaskProgressStoreContract,
+  assertTaskEventPublisherContract,
+  assertTaskSchedulerContract,
 } from "@jfs/agentic-server";
 import config from "./config.js";
 import { APP_EVENTS } from "./constants/app-events.js";
@@ -20,11 +21,14 @@ import { queueMarketResearchCompetitorTask } from "./tasks/queue/market-research
 import { queueMarketResearchInitialTask } from "./tasks/queue/market-research-initial.js";
 import { queueMarketResearchSummaryTask } from "./tasks/queue/market-research-summary.js";
 import { createMarketResearchRouter } from "./routes/market-research.js";
-import authRouter from "./routes/auth.js";
+import { createAuthRouter } from "./routes/auth.js";
 import { startCleanupJob } from "./utils/market-research-cleanup.js";
 import { SOCKET_EVENTS } from "./constants/socket-events.js";
 import { TASK_TYPES } from "./constants/task-types.js";
 import * as logger from "./utils/logger.js";
+import { createTaskRuntime } from "./infrastructure/runtime/create-task-runtime.js";
+import { createAppRepositories } from "./infrastructure/persistence/create-app-repositories.js";
+import { createSubscriptionService } from "./services/subscription.js";
 
 const app = express();
 app.set("etag", false);
@@ -45,8 +49,13 @@ const io = new Server(httpServer, {
 
 // ==================== Orchestrator ====================
 
-const queueStore = createFileQueueStore({
-  queueDir: config.queueDir,
+const { queueStore, taskProgressStore } = await createTaskRuntime({ config });
+const { marketResearchRepository, userRepository, subscriptionRepository } =
+  await createAppRepositories({
+    config,
+  });
+const subscriptionService = createSubscriptionService({
+  subscriptionRepository,
 });
 
 const taskEvents = new EventEmitter();
@@ -54,10 +63,8 @@ const taskEventPublisher = {
   publish: (eventName, payload) => taskEvents.emit(eventName, payload),
 };
 
-const taskProgressStore = createFileTaskProgressStore({
-  queueDir: config.queueDir,
-  outputPrefix: config.allowedOutputPrefix,
-});
+assertTaskProgressStoreContract(taskProgressStore);
+assertTaskEventPublisherContract(taskEventPublisher);
 
 const taskRunner = new LLMTaskRunner({
   apiKeys: config.apiKeys,
@@ -74,11 +81,16 @@ const taskQueue = {
   queueMarketResearchSummaryTask: (params) =>
     queueMarketResearchSummaryTask({ queueStore, taskProgressStore }, params),
 };
+assertTaskSchedulerContract(taskQueue, [
+  "queueMarketResearchInitialTask",
+  "queueMarketResearchCompetitorTask",
+  "queueMarketResearchSummaryTask",
+]);
 
 const taskHandlersByType = createTaskHandlersByType({
-  taskProgressStore,
   taskScheduler: taskQueue,
   taskEventPublisher,
+  marketResearchRepository,
 });
 
 const orchestrator = new TaskOrchestrator({
@@ -228,8 +240,18 @@ app.use((req, res, next) => {
 
 // ==================== Routes ====================
 
-app.use("/api/market-research", createMarketResearchRouter({ taskQueue }));
-app.use("/api/auth", authRouter);
+app.use(
+  "/api/market-research",
+  createMarketResearchRouter({
+    taskQueue,
+    marketResearchRepository,
+    subscriptionService,
+  }),
+);
+app.use(
+  "/api/auth",
+  createAuthRouter({ userRepository, subscriptionService }),
+);
 
 app.get("/api/tasks", async (req, res) => {
   try {
@@ -271,7 +293,7 @@ httpServer.listen(PORT, async () => {
     });
   }
 
-  startCleanupJob();
+  startCleanupJob({ marketResearchRepository });
   queueProcessor.start();
 
   logger.info("Queue processor started", { component: "Server" });

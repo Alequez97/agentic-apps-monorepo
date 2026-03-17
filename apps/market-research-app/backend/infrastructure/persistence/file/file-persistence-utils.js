@@ -1,6 +1,5 @@
 import fs from "fs/promises";
-import path from "path";
-import * as logger from "../utils/logger.js";
+import * as logger from "../../../utils/logger.js";
 
 /**
  * Safely read and parse a JSON file.

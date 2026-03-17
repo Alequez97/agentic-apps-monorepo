@@ -1,6 +1,7 @@
 import { Box, Button, HStack, Text } from "@chakra-ui/react";
 import { LogOut, User } from "lucide-react";
 import { useAuthStore } from "../../store/useAuthStore";
+import { useLocationStore } from "../../store/useLocationStore";
 import { useMarketResearchStore } from "../../store/useMarketResearchStore";
 
 /**
@@ -13,7 +14,7 @@ export function NavAuthControls() {
   const signOut = useAuthStore((s) => s.signOut);
   const setReturnStep = useAuthStore((s) => s.setReturnStep);
 
-  const step = useMarketResearchStore((s) => s.step);
+  const step = useLocationStore((s) => s.step);
   const setStep = useMarketResearchStore((s) => s.setStep);
   const goToProfile = useMarketResearchStore((s) => s.goToProfile);
 

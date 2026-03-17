@@ -40,6 +40,7 @@ export class LLMAgent {
     this.workingDirectory = options.workingDirectory;
     this.maxIterations = options.maxIterations || 30;
     this.maxTokens = options.maxTokens || client.config?.maxTokens || 4096;
+    this.fileToolsEnabled = true;
     this.fileToolExecutor = new FileToolExecutor(
       this.workingDirectory,
       options.allowedOutputPrefix,
@@ -48,7 +49,12 @@ export class LLMAgent {
     this.delegationToolExecutor = null; // Enabled per-task via enableDelegationTools()
     this.webSearchToolExecutor = null; // Enabled per-task via enableWebSearchTools()
     this.webFetchToolExecutor = null; // Enabled per-task via enableWebFetchTools()
+    this.customToolExecutors = [];
     this.conversationLog = [];
+  }
+
+  setFileToolsEnabled(enabled) {
+    this.fileToolsEnabled = Boolean(enabled);
   }
 
   /**
@@ -77,18 +83,11 @@ export class LLMAgent {
    * @param {string} parentTaskId - ID of the current task (embedded in synthetic chatIds)
    * @param {Object<string, Function>} queueFunctions - Map of task-type → queue function
    */
-  enableDelegationTools(
-    parentTaskId,
-    queueFunctions,
-    tempPrefix,
-    analysisRoot = null,
-  ) {
+  enableDelegationTools(parentTaskId, queueFunctions) {
     this.delegationToolExecutor = new DelegationToolExecutor(
       this.workingDirectory,
       parentTaskId,
       queueFunctions,
-      tempPrefix,
-      analysisRoot,
     );
     logger.info("Delegation tools enabled for agent session", {
       component: "LLMAgent",
@@ -121,16 +120,37 @@ export class LLMAgent {
     });
   }
 
+  enableCustomTools(executor) {
+    if (
+      !executor ||
+      !Array.isArray(executor.tools) ||
+      typeof executor.executeTool !== "function"
+    ) {
+      throw new Error(
+        "Custom tool executor requires tools[] and executeTool(name, args)",
+      );
+    }
+
+    this.customToolExecutors.push(executor);
+    logger.info("Custom tools enabled for agent session", {
+      component: "LLMAgent",
+      toolNames: executor.tools.map((tool) => tool.name),
+    });
+  }
+
   /**
    * Get the full list of tools available in this session
    * @private
    */
   _getAvailableTools() {
-    const tools = [...FILE_TOOLS];
+    const tools = this.fileToolsEnabled ? [...FILE_TOOLS] : [];
     if (this.commandToolExecutor) tools.push(...COMMAND_TOOLS);
     if (this.delegationToolExecutor) tools.push(...DELEGATION_TOOLS);
     if (this.webSearchToolExecutor) tools.push(...WEB_SEARCH_TOOLS);
     if (this.webFetchToolExecutor) tools.push(...WEB_FETCH_TOOLS);
+    for (const executor of this.customToolExecutors) {
+      tools.push(...executor.tools);
+    }
     return tools;
   }
 
@@ -444,6 +464,9 @@ export class LLMAgent {
           !isWebSearchTool &&
           this.webFetchToolExecutor &&
           WEB_FETCH_TOOLS.some((t) => t.name === toolCall.name);
+        const customToolExecutor = this.customToolExecutors.find((executor) =>
+          executor.tools.some((tool) => tool.name === toolCall.name),
+        );
 
         let result;
         if (isDelegationTool) {
@@ -452,6 +475,11 @@ export class LLMAgent {
             toolCall.arguments,
           );
           result = JSON.stringify(delegationResult, null, 2);
+        } else if (customToolExecutor) {
+          result = await customToolExecutor.executeTool(
+            toolCall.name,
+            toolCall.arguments,
+          );
         } else if (isWebSearchTool) {
           result = await this.webSearchToolExecutor.executeTool(
             toolCall.name,
