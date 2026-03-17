@@ -6,6 +6,10 @@ const frontendPort = parseInt(process.env.VITE_FRONTEND_PORT || "3131", 10);
 
 export default defineConfig({
   plugins: [react()],
+  build: {
+    outDir: "../backend/public",
+    emptyOutDir: true,
+  },
   server: {
     port: frontendPort,
     proxy: {

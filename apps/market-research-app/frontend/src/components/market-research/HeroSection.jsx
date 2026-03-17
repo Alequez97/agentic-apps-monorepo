@@ -81,9 +81,8 @@ export function HeroSection() {
         </Heading>
 
         <Text fontSize="16px" color="#64748b" lineHeight="1.7" maxW="500px">
-          Describe your product idea. Our AI explores the competitive landscape,
-          finds gaps, maps pricing, and gives you a go/no-go verdict — in
-          minutes.
+          Describe your product idea. Our AI explores the competitive landscape, finds gaps, maps
+          pricing, and gives you a go/no-go verdict — in minutes.
         </Text>
 
         <Button
@@ -106,7 +105,7 @@ export function HeroSection() {
             transform: "translateY(-1px)",
           }}
           _active={{ transform: "none" }}
-          onClick={() => navigate(\"/analyze\")}
+          onClick={() => navigate("/analyze")}
         >
           <Search size={16} strokeWidth={2.5} />
           Get started free

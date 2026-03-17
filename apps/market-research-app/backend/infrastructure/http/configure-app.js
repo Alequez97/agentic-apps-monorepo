@@ -1,3 +1,5 @@
+import { dirname, join } from "path";
+import { fileURLToPath } from "url";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import express from "express";
@@ -6,6 +8,8 @@ import { createMarketResearchRouter } from "../../routes/market-research.js";
 import { requireCsrf } from "../../middleware/csrf.js";
 import * as logger from "../../utils/logger.js";
 import { registerSystemRoutes } from "./register-system-routes.js";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
 
 export function configureApp({
   app,
@@ -36,10 +40,7 @@ export function configureApp({
 
   app.use((req, res, next) => {
     if (req.path.startsWith("/api/")) {
-      res.set(
-        "Cache-Control",
-        "no-store, no-cache, must-revalidate, proxy-revalidate",
-      );
+      res.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
       res.set("Pragma", "no-cache");
       res.set("Expires", "0");
       res.set("Surrogate-Control", "no-store");
@@ -60,10 +61,14 @@ export function configureApp({
       subscriptionService,
     }),
   );
-  app.use(
-    "/api/auth",
-    createAuthRouter({ userRepository, subscriptionService }),
-  );
+  app.use("/api/auth", createAuthRouter({ userRepository, subscriptionService }));
 
   registerSystemRoutes({ app, orchestrator });
+
+  // Serve frontend static build (same-domain deployment)
+  const publicDir = join(__dirname, "../../public");
+  app.use(express.static(publicDir));
+  app.get("*", (_req, res) => {
+    res.sendFile(join(publicDir, "index.html"));
+  });
 }
