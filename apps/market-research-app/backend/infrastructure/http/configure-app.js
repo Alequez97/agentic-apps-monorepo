@@ -3,9 +3,9 @@ import cookieParser from "cookie-parser";
 import express from "express";
 import { createAuthRouter } from "../../routes/auth.js";
 import { createMarketResearchRouter } from "../../routes/market-research.js";
-import { requireAuth } from "../../middleware/auth.js";
 import { requireCsrf } from "../../middleware/csrf.js";
 import * as logger from "../../utils/logger.js";
+import { registerSystemRoutes } from "./register-system-routes.js";
 
 export function configureApp({
   app,
@@ -65,22 +65,5 @@ export function configureApp({
     createAuthRouter({ userRepository, subscriptionService }),
   );
 
-  app.get("/api/tasks", requireAuth, async (req, res) => {
-    try {
-      const { dateFrom, dateTo, status } = req.query;
-      const filters = { ownerId: req.userId };
-      if (dateFrom) filters.dateFrom = dateFrom;
-      if (dateTo) filters.dateTo = dateTo;
-      if (status) filters.status = status.split(",").map((s) => s.trim());
-      const tasks = await orchestrator.getTasks(filters);
-      res.json({ tasks });
-    } catch (err) {
-      logger.error("Error reading tasks", { error: err, component: "API" });
-      res.status(500).json({ error: "Failed to read tasks" });
-    }
-  });
-
-  app.get("/api/status", (_req, res) => {
-    res.json({ status: "ok", service: "market-research-backend" });
-  });
+  registerSystemRoutes({ app, orchestrator });
 }
