@@ -26,6 +26,7 @@ import { startCleanupJob } from "./utils/market-research-cleanup.js";
 import { SOCKET_EVENTS } from "./constants/socket-events.js";
 import { TASK_TYPES } from "./constants/task-types.js";
 import * as logger from "./utils/logger.js";
+import { requireCsrf } from "./middleware/csrf.js";
 import { createTaskRuntime } from "./infrastructure/runtime/create-task-runtime.js";
 import { createAppRepositories } from "./infrastructure/persistence/create-app-repositories.js";
 import { createSubscriptionService } from "./services/subscription.js";
@@ -33,11 +34,23 @@ import { createSubscriptionService } from "./services/subscription.js";
 const app = express();
 app.set("etag", false);
 
+function isAllowedOrigin(origin) {
+  if (!origin) {
+    return true;
+  }
+
+  if (config.allowedOrigins.length > 0) {
+    return config.allowedOrigins.includes(origin);
+  }
+
+  return /^http:\/\/localhost:\d+$/.test(origin);
+}
+
 const httpServer = createServer(app);
 const io = new Server(httpServer, {
   cors: {
     origin: (origin, callback) => {
-      if (!origin || /^http:\/\/localhost:\d+$/.test(origin)) {
+      if (isAllowedOrigin(origin)) {
         callback(null, true);
       } else {
         callback(new Error("Not allowed by CORS"));
@@ -216,9 +229,21 @@ taskEvents.on(APP_EVENTS.MARKET_RESEARCH_COMPETITOR_UPDATED, (data) => {
 
 // ==================== Middleware ====================
 
-app.use(cors({ credentials: true, origin: (origin, cb) => cb(null, true) }));
+app.use(
+  cors({
+    credentials: true,
+    origin: (origin, callback) => {
+      if (isAllowedOrigin(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
+  }),
+);
 app.use(cookieParser());
 app.use(express.json());
+app.use("/api", requireCsrf);
 
 app.use((req, res, next) => {
   if (req.path.startsWith("/api/")) {

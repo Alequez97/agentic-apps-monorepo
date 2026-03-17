@@ -4,6 +4,7 @@ import jwt from "jsonwebtoken";
 import config from "../config.js";
 import * as logger from "../utils/logger.js";
 import { requireAuth } from "../middleware/auth.js";
+import { clearCsrfToken, issueCsrfToken } from "../middleware/csrf.js";
 
 export function createAuthRouter({ userRepository, subscriptionService }) {
   const router = Router();
@@ -60,6 +61,7 @@ export function createAuthRouter({ userRepository, subscriptionService }) {
     });
 
     res.cookie("jwt", token, COOKIE_OPTIONS);
+    issueCsrfToken(res);
 
     logger.info("User signed in via Google", {
       userId: user.userId,
@@ -99,6 +101,7 @@ export function createAuthRouter({ userRepository, subscriptionService }) {
 
   router.post("/logout", (_req, res) => {
     res.clearCookie("jwt", COOKIE_OPTIONS);
+    clearCsrfToken(res);
     return res.json({ success: true });
   });
 

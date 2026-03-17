@@ -27,6 +27,10 @@ const dataDir = (() => {
 })();
 
 const dataRootName = path.basename(path.normalize(dataDir));
+const allowedOrigins = (process.env.ALLOWED_ORIGINS || "")
+  .split(",")
+  .map((value) => value.trim())
+  .filter(Boolean);
 
 const config = {
   port: (() => {
@@ -52,6 +56,8 @@ const config = {
 
   // Delegation request files temp prefix relative to workingDirectory.
   delegationTempPrefix: `${dataRootName}/temp`,
+
+  allowedOrigins,
 
   storage: {
     queue: {
