@@ -18,6 +18,7 @@ export function createSocketServer({ httpServer, config }) {
         }
       },
       methods: ["GET", "POST"],
+      credentials: true,
     },
   });
 
