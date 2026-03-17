@@ -152,6 +152,30 @@ export function createFileMarketResearchRepository({
       });
     },
 
+    async markSessionFailed(sessionId, error) {
+      const session = await readJsonOrNull(getSessionPath(sessionId), sessionId);
+      if (!session) {
+        return;
+      }
+
+      const now = Date.now();
+      await writeJson(getSessionPath(sessionId), {
+        ...session,
+        lastAccessedAt: now,
+        state: {
+          ...(session.state || {}),
+          status: "failed",
+          failedAt: now,
+          error: error || "Market research failed",
+        },
+      });
+
+      logger.info("Market research session marked failed", {
+        sessionId,
+        component: "MarketResearchRepository",
+      });
+    },
+
     async listSessions() {
       let entries;
       try {

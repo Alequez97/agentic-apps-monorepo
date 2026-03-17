@@ -51,8 +51,8 @@ export function createMarketResearchOutputToolExecutor({ task, marketResearchRep
             description: "Logical output target to persist.",
           },
           payload: {
-            type: "object",
-            description: "Structured JSON payload to persist for the selected target.",
+            type: "string",
+            description: "JSON-encoded structured payload to persist for the selected target.",
           },
         },
         required: ["target", "payload"],
@@ -73,11 +73,18 @@ export function createMarketResearchOutputToolExecutor({ task, marketResearchRep
         throw new Error("write_output requires payload");
       }
 
+      let parsedPayload;
+      try {
+        parsedPayload = typeof payload === "string" ? JSON.parse(payload) : payload;
+      } catch {
+        throw new Error("write_output: payload must be valid JSON");
+      }
+
       await handler.save({
         marketResearchRepository,
         sessionId: task.params?.sessionId,
         competitorId: task.params?.competitorId,
-        payload,
+        payload: parsedPayload,
       });
 
       return JSON.stringify(

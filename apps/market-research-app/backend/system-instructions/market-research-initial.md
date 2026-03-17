@@ -19,7 +19,7 @@ You will receive a startup idea, a session ID, and a target market. You must:
 
 - `web_search`: Search the web for real-time information about competitors, markets, and trends
 - `delegate_task`: Spawn a specialist competitor-research sub-agent for a single competitor
-- `write_output`: Persist structured outputs for this task — **both `target` and `payload` are required**
+- `write_output`: Persist structured outputs for this task — **both `target` and `payload` are required**. The `payload` argument must be a **JSON-encoded string** (i.e. the result of `JSON.stringify(...)`) — not a raw object.
 
 ## Step 1. Identify competitors
 
@@ -47,7 +47,7 @@ Delegate all competitors before moving to step 3.
 
 ## Step 3. Persist stub outputs
 
-Call `write_output` with `target: "report_draft"` and this payload:
+Call `write_output` with `target: "report_draft"`. The `payload` argument must be a JSON-encoded string of the following structure:
 
 ```json
 {
@@ -67,7 +67,7 @@ Call `write_output` with `target: "report_draft"` and this payload:
 }
 ```
 
-Then call `write_output` with `target: "competitor_tasks"` and this payload:
+Then call `write_output` with `target: "competitor_tasks"`. The `payload` argument must be a JSON-encoded string of the following structure:
 
 ```json
 [{ "competitorId": "stripe", "taskId": "mrc-abc123" }]

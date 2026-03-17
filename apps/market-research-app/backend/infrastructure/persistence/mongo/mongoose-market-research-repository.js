@@ -225,6 +225,28 @@ export async function createMongoMarketResearchRepository({ uri, dbName }) {
       });
     },
 
+    async markSessionFailed(sessionId, error) {
+      assertValidSessionId(sessionId);
+
+      const now = Date.now();
+      await Session.updateOne(
+        { sessionId },
+        {
+          $set: {
+            lastAccessedAt: now,
+            "state.status": "failed",
+            "state.failedAt": now,
+            "state.error": error || "Market research failed",
+          },
+        },
+      );
+
+      logger.info("Market research session marked failed", {
+        sessionId,
+        component: "MongoMarketResearchRepository",
+      });
+    },
+
     async listSessions() {
       return Session.find({}).sort({ createdAt: -1 }).lean();
     },

@@ -6,9 +6,6 @@ export const getAnalysisHistory = (reportId) =>
 export const saveMarketResearchReport = (reportId, idea, state) =>
   client.put(`/market-research/${reportId}`, { idea, state });
 
-export const getMarketResearchReportState = (reportId) =>
-  client.get(`/market-research/${reportId}`);
-
 export const requestMarketResearchAnalysis = (
   reportId,
   idea,
@@ -26,3 +23,9 @@ export const getMarketResearchReport = (reportId) =>
 
 export const getCompetitorDetails = (reportId, competitorId) =>
   client.get(`/market-research/${reportId}/competitors/${competitorId}`);
+
+export const restartMarketResearchAnalysis = (reportId, idea, regions) =>
+  client.post(`/market-research/${reportId}/analyze`, {
+    idea,
+    regions: regions ?? null,
+  });

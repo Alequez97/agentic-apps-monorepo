@@ -17,9 +17,29 @@ export const useProfileStore = create((set) => ({
   },
 
   addAnalysis: (entry) =>
-    set((state) => ({
-      analysisHistory: [entry, ...state.analysisHistory].slice(0, 100),
-    })),
+    set((state) => {
+      const next = [entry, ...state.analysisHistory.filter((item) => item.id !== entry.id)];
+      return {
+        analysisHistory: next
+          .sort((a, b) => (b.completedAt ?? b.updatedAt ?? 0) - (a.completedAt ?? a.updatedAt ?? 0))
+          .slice(0, 100),
+      };
+    }),
+
+  upsertAnalysis: (entry) =>
+    set((state) => {
+      const existing = state.analysisHistory.find((item) => item.id === entry.id);
+      const merged = {
+        ...existing,
+        ...entry,
+      };
+      const next = [merged, ...state.analysisHistory.filter((item) => item.id !== entry.id)];
+      return {
+        analysisHistory: next
+          .sort((a, b) => (b.completedAt ?? b.updatedAt ?? 0) - (a.completedAt ?? a.updatedAt ?? 0))
+          .slice(0, 100),
+      };
+    }),
 
   clearHistory: () => set({ analysisHistory: [] }),
 }));

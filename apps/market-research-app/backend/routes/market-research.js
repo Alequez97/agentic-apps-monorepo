@@ -54,9 +54,13 @@ export function createMarketResearchRouter({
         .map((entry) => ({
           id: entry.sessionId,
           idea: entry.idea,
-          completedAt: entry.state?.completedAt ?? entry.createdAt,
+          completedAt:
+            entry.state?.completedAt ??
+            entry.state?.failedAt ??
+            entry.createdAt,
           competitorCount: entry.state?.competitorCount ?? 0,
           status: entry.state?.status ?? "analyzing",
+          error: entry.state?.error ?? null,
         }))
         .sort((a, b) => b.completedAt - a.completedAt);
 
@@ -283,13 +287,21 @@ export function createMarketResearchRouter({
 
       const report = await marketResearchRepository.getReport(reportId);
       if (!report) {
-        return res.status(404).json({
-          error: "Report not found",
+        return res.json({
+          status: reportSession.state?.status ?? "analyzing",
+          report: null,
+          error: reportSession.state?.error ?? null,
           message:
-            "Analysis may still be in progress or has not been started",
+            reportSession.state?.status === "failed"
+              ? "Analysis failed before a final report was generated"
+              : "Analysis may still be in progress or has not been started",
         });
       }
-      return res.json({ report });
+      return res.json({
+        status: reportSession.state?.status ?? "complete",
+        report,
+        error: reportSession.state?.error ?? null,
+      });
     } catch (error) {
       if (error.message === "Invalid sessionId format") {
         return res.status(400).json({ error: "Invalid reportId format" });

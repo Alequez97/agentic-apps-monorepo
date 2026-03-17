@@ -24,6 +24,7 @@ import { createSubscriptionService } from "./services/subscription.js";
 import { createSocketServer } from "./infrastructure/http/create-socket-server.js";
 import { registerTaskSocketBridge } from "./infrastructure/http/register-task-socket-bridge.js";
 import { configureApp } from "./infrastructure/http/configure-app.js";
+import { TASK_TYPES } from "./constants/task-types.js";
 
 const app = express();
 const httpServer = createServer(app);
@@ -96,6 +97,31 @@ registerTaskSocketBridge({
   getUserRoom,
   taskEvents,
   TASK_EVENTS,
+});
+
+taskEvents.on(TASK_EVENTS.FAILED, async ({ task, error }) => {
+  const sessionId = task?.params?.sessionId;
+  if (
+    !sessionId ||
+    ![
+      TASK_TYPES.MARKET_RESEARCH_INITIAL,
+      TASK_TYPES.MARKET_RESEARCH_COMPETITOR,
+      TASK_TYPES.MARKET_RESEARCH_SUMMARY,
+    ].includes(task?.type)
+  ) {
+    return;
+  }
+
+  try {
+    await marketResearchRepository.markSessionFailed(sessionId, error);
+  } catch (persistError) {
+    logger.warn("Failed to persist failed market research session state", {
+      component: "Server",
+      sessionId,
+      taskId: task?.id,
+      error: persistError.message,
+    });
+  }
 });
 
 configureApp({

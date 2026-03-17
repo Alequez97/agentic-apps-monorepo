@@ -12,11 +12,11 @@ Research **{{COMPETITOR_NAME}}** (`{{COMPETITOR_URL}}`) and persist a complete p
 
 - `web_search`: Search the web for real-time information about this competitor
 - `fetch_url`: Fetch the contents of a specific URL when search results are not enough
-- `write_output`: Persist the completed competitor profile JSON — **both `target` and `payload` are required**
+- `write_output`: Persist the completed competitor profile JSON — **both `target` and `payload` are required**. The `payload` argument must be a **JSON-encoded string** (i.e. the result of `JSON.stringify(...)`) — not a raw object.
 
 ## Output tool
 
-Use `write_output` with `target: "competitor_profile"` to persist the final JSON object.
+Use `write_output` with `target: "competitor_profile"` to persist the final JSON object. Pass the JSON as a **string** in the `payload` argument — not as an object.
 
 ## How to research
 
@@ -140,4 +140,4 @@ Persist a single valid JSON object:
 3. Combine search results with your existing knowledge.
 4. Collect claim-level source links that support pricing, company facts, reviews, and key features.
 5. Make `missingFeatures`, `strengths`, and `weaknesses` useful for final market synthesis.
-6. Persist the final JSON in one `write_output` call.
+6. Persist the final JSON in one `write_output` call — pass the JSON as a **string** in the `payload` argument.

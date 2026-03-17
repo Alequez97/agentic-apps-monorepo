@@ -113,12 +113,14 @@ export const useSocketStore = create((set, get) => ({
         const storeReportId = useMarketResearchStore.getState().reportId;
 
         if (reportId && idea) {
-          useProfileStore.getState().addAnalysis({
+          useProfileStore.getState().upsertAnalysis({
             id: reportId,
             idea,
             completedAt: Date.now(),
+            updatedAt: Date.now(),
             competitorCount:
               useMarketResearchStore.getState().competitors.length,
+            status: "complete",
           });
         }
 
@@ -142,6 +144,8 @@ export const useSocketStore = create((set, get) => ({
 
     socket.on(SOCKET_EVENTS.TASK_FAILED, (data) => {
       const { type, taskId, domainId, error } = data;
+      const reportId = data?.params?.sessionId;
+      const idea = data?.params?.idea;
 
       if (taskId) {
         useTaskProgressStore
@@ -149,8 +153,26 @@ export const useSocketStore = create((set, get) => ({
           .setFailed({ id: taskId, type, domainId, error });
       }
 
+      if (
+        reportId &&
+        [
+          TASK_TYPES.MARKET_RESEARCH_INITIAL,
+          TASK_TYPES.MARKET_RESEARCH_COMPETITOR,
+          TASK_TYPES.MARKET_RESEARCH_SUMMARY,
+        ].includes(type)
+      ) {
+        useProfileStore.getState().upsertAnalysis({
+          id: reportId,
+          idea: idea ?? useMarketResearchStore.getState().idea ?? "Untitled analysis",
+          completedAt: Date.now(),
+          updatedAt: Date.now(),
+          competitorCount: useMarketResearchStore.getState().competitors.length,
+          status: "failed",
+          error: error ?? "Task failed",
+        });
+      }
+
       if (type === TASK_TYPES.MARKET_RESEARCH_INITIAL) {
-        const reportId = data?.params?.sessionId;
         const storeReportId = useMarketResearchStore.getState().reportId;
         if (reportId && reportId === storeReportId) {
           useMarketResearchStore.getState()._markAnalysisFailed();

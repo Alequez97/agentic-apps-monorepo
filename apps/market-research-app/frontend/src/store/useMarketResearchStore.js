@@ -4,7 +4,9 @@ import {
   requestMarketResearchAnalysis,
   getMarketResearchReport as fetchMarketResearchReport,
   getCompetitorDetails,
+  restartMarketResearchAnalysis,
 } from "../api/market-research";
+import { useProfileStore } from "./useProfileStore";
 
 function logLineToKind(log) {
   const lower = log.toLowerCase();
@@ -70,6 +72,14 @@ export const useMarketResearchStore = create(
 
         try {
           await requestMarketResearchAnalysis(reportId, idea, numCompetitors, regions);
+          useProfileStore.getState().upsertAnalysis({
+            id: reportId,
+            idea,
+            competitorCount: 0,
+            completedAt: Date.now(),
+            updatedAt: Date.now(),
+            status: "analyzing",
+          });
         } catch {
           set({
             isAnalyzing: false,
@@ -80,6 +90,59 @@ export const useMarketResearchStore = create(
             competitorTaskMap: {},
             selectedCompetitorId: null,
           });
+          useProfileStore.getState().upsertAnalysis({
+            id: reportId,
+            idea,
+            competitorCount: 0,
+            completedAt: Date.now(),
+            updatedAt: Date.now(),
+            status: "failed",
+          });
+        }
+      },
+
+      restartAnalysis: async ({ reportId, idea, regions = null }) => {
+        set({
+          idea,
+          regions,
+          reportId,
+          isAnalyzing: true,
+          isAnalysisComplete: false,
+          summaryStatus: "finding-competitors",
+          competitors: [],
+          activityEvents: [],
+          analysisStartedAt: Date.now(),
+          report: null,
+          competitorTaskMap: {},
+          selectedCompetitorId: null,
+        });
+
+        try {
+          await restartMarketResearchAnalysis(reportId, idea, regions);
+          useProfileStore.getState().upsertAnalysis({
+            id: reportId,
+            idea,
+            competitorCount: 0,
+            completedAt: Date.now(),
+            updatedAt: Date.now(),
+            status: "analyzing",
+          });
+          return true;
+        } catch {
+          set({
+            isAnalyzing: false,
+            isAnalysisComplete: false,
+            summaryStatus: "failed",
+          });
+          useProfileStore.getState().upsertAnalysis({
+            id: reportId,
+            idea,
+            competitorCount: 0,
+            completedAt: Date.now(),
+            updatedAt: Date.now(),
+            status: "failed",
+          });
+          return false;
         }
       },
 
@@ -235,18 +298,45 @@ export const useMarketResearchStore = create(
           reportId,
           report: null,
           competitors: [],
-          isAnalyzing: false,
-          isAnalysisComplete: true,
-          summaryStatus: "ready",
+          activityEvents: [],
+          competitorTaskMap: {},
+          selectedCompetitorId: null,
+          isAnalyzing: entry.status === "analyzing",
+          isAnalysisComplete: false,
+          summaryStatus:
+            entry.status === "failed"
+              ? "failed"
+              : entry.status === "complete"
+                ? "summarizing"
+                : "finding-competitors",
         });
         try {
           const response = await fetchMarketResearchReport(reportId);
           const report = response?.data?.report;
+          const status = response?.data?.status ?? entry.status ?? "idle";
+
           if (report) {
             get()._applyReport(report);
+            return;
+          }
+
+          set({
+            isAnalyzing: status === "analyzing",
+            isAnalysisComplete: false,
+            summaryStatus:
+              status === "failed"
+                ? "failed"
+                : status === "analyzing"
+                  ? "finding-competitors"
+                  : "idle",
+          });
+          if (status === "failed") {
+            get()._markAnalysisFailed();
           }
         } catch {
-          // silently ignore
+          if (entry.status === "failed") {
+            get()._markAnalysisFailed();
+          }
         }
       },
     }),

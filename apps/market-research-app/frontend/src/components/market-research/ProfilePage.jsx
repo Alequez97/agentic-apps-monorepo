@@ -19,6 +19,7 @@ export function ProfilePage() {
   const clearHistory = useProfileStore((s) => s.clearHistory);
   const fetchHistory = useProfileStore((s) => s.fetchHistory);
   const openHistoryAnalysis = useMarketResearchStore((s) => s.openHistoryAnalysis);
+  const restartAnalysis = useMarketResearchStore((s) => s.restartAnalysis);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -46,6 +47,13 @@ export function ProfilePage() {
           onOpen={(entry) => {
             openHistoryAnalysis(entry);
             navigate("/summary");
+          }}
+          onRestart={async (entry) => {
+            const started = await restartAnalysis({
+              reportId: entry.id,
+              idea: entry.idea,
+            });
+            navigate(started ? "/analysis" : "/profile");
           }}
         />
       </Box>

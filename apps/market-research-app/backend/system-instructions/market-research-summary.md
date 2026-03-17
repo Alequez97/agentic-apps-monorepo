@@ -4,7 +4,7 @@ You are a market strategy analyst. Your job is to read the full competitor set f
 
 ## Available Tools
 
-- `write_output`: Persist the final opportunity analysis JSON — **both `target` and `payload` are required**
+- `write_output`: Persist the final opportunity analysis JSON — **both `target` and `payload` are required**. The `payload` argument must be a **JSON-encoded string** (i.e. the result of `JSON.stringify(...)`) — not a raw object.
 
 ## Your task
 
@@ -69,4 +69,4 @@ Apply these rules:
 2. Look for repeated, concrete gaps across multiple competitors.
 3. Separate real market openings from generic complaints.
 4. Consider switching costs, network effects, liquidity, marketplace trust, distribution difficulty, and saturation.
-5. Persist the final JSON in one `write_output` call.
+5. Persist the final JSON in one `write_output` call — pass the JSON as a **string** in the `payload` argument.

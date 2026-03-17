@@ -13,6 +13,7 @@ import {
   Clock,
   FileText,
   Inbox,
+  RefreshCcw,
   Search,
 } from "lucide-react";
 
@@ -31,7 +32,39 @@ function formatTime(ts) {
   });
 }
 
-function HistoryRow({ entry, isLast, onOpen }) {
+function getStatusStyle(status) {
+  if (status === "failed") {
+    return {
+      bg: "rgba(239,68,68,0.08)",
+      borderColor: "rgba(239,68,68,0.25)",
+      dot: "#dc2626",
+      color: "#b91c1c",
+      label: "Failed",
+    };
+  }
+
+  if (status === "analyzing") {
+    return {
+      bg: "#eef2ff",
+      borderColor: "#c7d2fe",
+      dot: "#6366f1",
+      color: "#4f46e5",
+      label: "Running",
+    };
+  }
+
+  return {
+    bg: "rgba(22,163,74,0.08)",
+    borderColor: "rgba(22,163,74,0.25)",
+    dot: "#16a34a",
+    color: "#15803d",
+    label: "Complete",
+  };
+}
+
+function HistoryRow({ entry, isLast, onOpen, onRestart }) {
+  const statusStyle = getStatusStyle(entry.status);
+
   return (
     <Box
       py={3.5}
@@ -93,19 +126,39 @@ function HistoryRow({ entry, isLast, onOpen }) {
 
         <HStack
           gap={1}
-          bg="rgba(22,163,74,0.08)"
+          bg={statusStyle.bg}
           borderWidth="1px"
-          borderColor="rgba(22,163,74,0.25)"
+          borderColor={statusStyle.borderColor}
           borderRadius="20px"
           px={2.5}
           py={1}
           flexShrink={0}
         >
-          <Box w="5px" h="5px" borderRadius="50%" bg="#16a34a" />
-          <Text fontSize="11px" fontWeight="600" color="#15803d">
-            Complete
+          <Box w="5px" h="5px" borderRadius="50%" bg={statusStyle.dot} />
+          <Text fontSize="11px" fontWeight="600" color={statusStyle.color}>
+            {statusStyle.label}
           </Text>
         </HStack>
+
+        {entry.status === "failed" && (
+          <Button
+            size="xs"
+            variant="outline"
+            h="28px"
+            px={2.5}
+            borderRadius="8px"
+            borderColor="#fecaca"
+            color="#b91c1c"
+            bg="white"
+            onClick={(event) => {
+              event.stopPropagation();
+              onRestart(entry);
+            }}
+          >
+            <RefreshCcw size={12} />
+            <Text ml={1}>Restart</Text>
+          </Button>
+        )}
 
         <Box color="#c7d2fe" flexShrink={0}>
           <ChevronRight size={15} strokeWidth={2.5} />
@@ -166,7 +219,7 @@ function HistoryLoading() {
   );
 }
 
-export function AnalysisHistory({ history, isLoading, onClear, onOpen }) {
+export function AnalysisHistory({ history, isLoading, onClear, onOpen, onRestart }) {
   return (
     <Box
       bg="white"
@@ -227,6 +280,7 @@ export function AnalysisHistory({ history, isLoading, onClear, onOpen }) {
               entry={entry}
               isLast={i === history.length - 1}
               onOpen={() => onOpen(entry)}
+              onRestart={onRestart}
             />
           ))}
         </VStack>
