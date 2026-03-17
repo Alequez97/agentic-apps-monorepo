@@ -1,23 +1,18 @@
-DONE
+NOT DONE
 
 # Production Readiness Checklist
 
-Each file in this folder represents one production-readiness point.
+Each file in this folder represents one production-readiness point that is still unresolved or not production-ready.
 
 Status marker rules:
 
-- First line is always `DONE` or `NOT DONE`
-- `DONE` means the capability exists in the current app, even if it may still need refinement
-- `NOT DONE` means the capability is missing, incomplete, or not production-ready yet
+- First line is always `NOT DONE`
+- Items that are fully done are removed from this folder instead of being kept as completed checklist entries
+- Each remaining file represents a gap, risk, or unfinished production concern
 
 Checklist files:
 
-- [01-google-sign-in.md](c:\_projects\developing\jfs\agentic-apps-monorepo\apps\market-research-app\docs\productions-readiness\01-google-sign-in.md)
-- [02-idea-input-and-region-selection.md](c:\_projects\developing\jfs\agentic-apps-monorepo\apps\market-research-app\docs\productions-readiness\02-idea-input-and-region-selection.md)
-- [03-async-task-orchestration-and-live-progress.md](c:\_projects\developing\jfs\agentic-apps-monorepo\apps\market-research-app\docs\productions-readiness\03-async-task-orchestration-and-live-progress.md)
-- [04-report-history-and-report-retrieval.md](c:\_projects\developing\jfs\agentic-apps-monorepo\apps\market-research-app\docs\productions-readiness\04-report-history-and-report-retrieval.md)
-- [05-plan-metadata-in-code.md](c:\_projects\developing\jfs\agentic-apps-monorepo\apps\market-research-app\docs\productions-readiness\05-plan-metadata-in-code.md)
-- [06-local-file-persistence.md](c:\_projects\developing\jfs\agentic-apps-monorepo\apps\market-research-app\docs\productions-readiness\06-local-file-persistence.md)
+- [01-core-architecture-and-persistence-boundaries.md](c:\_projects\developing\jfs\agentic-apps-monorepo\apps\market-research-app\docs\productions-readiness\01-core-architecture-and-persistence-boundaries.md)
 - [07-real-billing-provider-integration.md](c:\_projects\developing\jfs\agentic-apps-monorepo\apps\market-research-app\docs\productions-readiness\07-real-billing-provider-integration.md)
 - [08-subscription-lifecycle-management.md](c:\_projects\developing\jfs\agentic-apps-monorepo\apps\market-research-app\docs\productions-readiness\08-subscription-lifecycle-management.md)
 - [09-credit-ledger-and-top-ups.md](c:\_projects\developing\jfs\agentic-apps-monorepo\apps\market-research-app\docs\productions-readiness\09-credit-ledger-and-top-ups.md)
