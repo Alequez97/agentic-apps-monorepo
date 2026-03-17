@@ -1,6 +1,14 @@
 import { Router } from "express";
 import * as logger from "../utils/logger.js";
 import { requireAuth } from "../middleware/auth.js";
+import { validateRequest } from "../middleware/validation.js";
+import {
+  analyzeReportBodySchema,
+  competitorParamsSchema,
+  listHistoryQuerySchema,
+  reportIdParamsSchema,
+  upsertSessionBodySchema,
+} from "../validation/market-research.js";
 
 async function requireOwnedReport(req, res, reportId, marketResearchRepository) {
   const reportSession = await marketResearchRepository.getSession(reportId);
@@ -28,7 +36,11 @@ export function createMarketResearchRouter({
   // GET /api/market-research
   // List report history entries.
   // Optional ?reportId= query param to filter to a specific report.
-  router.get("/", requireAuth, async (req, res) => {
+  router.get(
+    "/",
+    requireAuth,
+    validateRequest({ query: listHistoryQuerySchema }),
+    async (req, res) => {
     const { reportId } = req.query;
     try {
       const sessions = await marketResearchRepository.listSessions();
@@ -56,25 +68,26 @@ export function createMarketResearchRouter({
       });
       return res.status(500).json({ error: "Failed to load history" });
     }
-  });
+    },
+  );
 
   // PUT /api/market-research/:reportId
   // Save or overwrite one report state.
-  router.put("/:reportId", requireAuth, async (req, res) => {
+  router.put(
+    "/:reportId",
+    requireAuth,
+    validateRequest({
+      params: reportIdParamsSchema,
+      body: upsertSessionBodySchema,
+    }),
+    async (req, res) => {
     const { reportId } = req.params;
     const { idea, state } = req.body;
-
-    if (!idea || typeof idea !== "string" || !idea.trim()) {
-      return res.status(400).json({ error: "idea is required" });
-    }
-    if (!state || typeof state !== "object") {
-      return res.status(400).json({ error: "state object is required" });
-    }
 
     try {
       const reportSession = await marketResearchRepository.upsertSession(
         reportId,
-        idea.trim(),
+        idea,
         state,
         req.userId,
       );
@@ -90,11 +103,16 @@ export function createMarketResearchRouter({
       });
       return res.status(500).json({ error: "Failed to save report state" });
     }
-  });
+    },
+  );
 
   // GET /api/market-research/:reportId
   // Retrieve a stored report state by ID.
-  router.get("/:reportId", requireAuth, async (req, res) => {
+  router.get(
+    "/:reportId",
+    requireAuth,
+    validateRequest({ params: reportIdParamsSchema }),
+    async (req, res) => {
     const { reportId } = req.params;
 
     try {
@@ -117,17 +135,21 @@ export function createMarketResearchRouter({
       });
       return res.status(500).json({ error: "Failed to load report state" });
     }
-  });
+    },
+  );
 
   // POST /api/market-research/:reportId/analyze
   // Queue a market research run for this report.
-  router.post("/:reportId/analyze", requireAuth, async (req, res) => {
+  router.post(
+    "/:reportId/analyze",
+    requireAuth,
+    validateRequest({
+      params: reportIdParamsSchema,
+      body: analyzeReportBodySchema,
+    }),
+    async (req, res) => {
     const { reportId } = req.params;
     const { idea, regions } = req.body;
-
-    if (!idea || typeof idea !== "string" || !idea.trim()) {
-      return res.status(400).json({ error: "idea is required" });
-    }
 
     const normalizedRegions =
       Array.isArray(regions) && regions.length > 0 ? regions : null;
@@ -143,7 +165,7 @@ export function createMarketResearchRouter({
     try {
       await marketResearchRepository.upsertSession(
         reportId,
-        idea.trim(),
+        idea,
         {
           status: "analyzing",
           numCompetitors,
@@ -161,7 +183,7 @@ export function createMarketResearchRouter({
     try {
       const task = await taskQueue.queueMarketResearchInitialTask({
         sessionId: reportId,
-        idea: idea.trim(),
+        idea,
         numCompetitors,
         regions: normalizedRegions,
       });
@@ -191,13 +213,15 @@ export function createMarketResearchRouter({
       });
       return res.status(500).json({ error: "Failed to start analysis" });
     }
-  });
+    },
+  );
 
   // GET /api/market-research/:reportId/competitors/:competitorId
   // Retrieve one competitor profile for a report.
   router.get(
     "/:reportId/competitors/:competitorId",
     requireAuth,
+    validateRequest({ params: competitorParamsSchema }),
     async (req, res) => {
       const { reportId, competitorId } = req.params;
 
@@ -240,7 +264,11 @@ export function createMarketResearchRouter({
 
   // GET /api/market-research/:reportId/report
   // Retrieve the final generated report payload.
-  router.get("/:reportId/report", requireAuth, async (req, res) => {
+  router.get(
+    "/:reportId/report",
+    requireAuth,
+    validateRequest({ params: reportIdParamsSchema }),
+    async (req, res) => {
     const { reportId } = req.params;
 
     try {
@@ -272,7 +300,8 @@ export function createMarketResearchRouter({
       });
       return res.status(500).json({ error: "Failed to load report" });
     }
-  });
+    },
+  );
 
   return router;
 }

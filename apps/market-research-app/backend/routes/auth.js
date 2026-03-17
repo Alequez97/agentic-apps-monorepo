@@ -5,6 +5,8 @@ import config from "../config.js";
 import * as logger from "../utils/logger.js";
 import { requireAuth } from "../middleware/auth.js";
 import { clearCsrfToken, issueCsrfToken } from "../middleware/csrf.js";
+import { validateRequest } from "../middleware/validation.js";
+import { googleAuthBodySchema } from "../validation/auth.js";
 
 export function createAuthRouter({ userRepository, subscriptionService }) {
   const router = Router();
@@ -17,12 +19,8 @@ export function createAuthRouter({ userRepository, subscriptionService }) {
     maxAge: 7 * 24 * 60 * 60 * 1000,
   };
 
-  router.post("/google", async (req, res) => {
+  router.post("/google", validateRequest({ body: googleAuthBodySchema }), async (req, res) => {
     const { credential } = req.body;
-
-    if (!credential || typeof credential !== "string") {
-      return res.status(400).json({ error: "credential is required" });
-    }
 
     if (!config.googleClientId) {
       logger.error("GOOGLE_CLIENT_ID is not configured", {
