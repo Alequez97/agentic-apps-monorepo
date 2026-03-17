@@ -8,8 +8,7 @@ function shouldSkipCsrf(method) {
 }
 
 function isCsrfExemptPath(path) {
-  const normalizedPath =
-    path.length > 1 && path.endsWith("/") ? path.slice(0, -1) : path;
+  const normalizedPath = path.length > 1 && path.endsWith("/") ? path.slice(0, -1) : path;
 
   return normalizedPath === "/auth/google" || normalizedPath === "/api/auth/google";
 }
@@ -18,7 +17,7 @@ function buildCsrfCookieOptions() {
   return {
     httpOnly: false,
     secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
+    sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
     path: "/",
   };
 }
@@ -48,10 +47,7 @@ export function requireCsrf(req, res, next) {
   const cookieBuffer = Buffer.from(cookieToken, "utf-8");
   const headerBuffer = Buffer.from(headerToken, "utf-8");
 
-  if (
-    cookieBuffer.length !== headerBuffer.length ||
-    !timingSafeEqual(cookieBuffer, headerBuffer)
-  ) {
+  if (cookieBuffer.length !== headerBuffer.length || !timingSafeEqual(cookieBuffer, headerBuffer)) {
     return res.status(403).json({ error: "Invalid CSRF token" });
   }
 
