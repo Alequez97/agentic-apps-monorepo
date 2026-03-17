@@ -21,25 +21,38 @@ export function ProfileHeader({ user, onSignOut }) {
     >
       <HStack gap={5} align="start" flexWrap="wrap">
         {/* Avatar */}
-        <Box
-          w="64px"
-          h="64px"
-          borderRadius="50%"
-          bg="linear-gradient(135deg, #6366f1, #7c3aed)"
-          display="flex"
-          alignItems="center"
-          justifyContent="center"
-          flexShrink={0}
-        >
-          <Text
-            fontSize="20px"
-            fontWeight="800"
-            color="white"
-            letterSpacing="-0.01em"
+        {user.picture ? (
+          <Box
+            as="img"
+            src={user.picture}
+            alt={user.name ?? user.email}
+            w="64px"
+            h="64px"
+            borderRadius="50%"
+            objectFit="cover"
+            flexShrink={0}
+          />
+        ) : (
+          <Box
+            w="64px"
+            h="64px"
+            borderRadius="50%"
+            bg="linear-gradient(135deg, #6366f1, #7c3aed)"
+            display="flex"
+            alignItems="center"
+            justifyContent="center"
+            flexShrink={0}
           >
-            {initials}
-          </Text>
-        </Box>
+            <Text
+              fontSize="20px"
+              fontWeight="800"
+              color="white"
+              letterSpacing="-0.01em"
+            >
+              {initials}
+            </Text>
+          </Box>
+        )}
 
         {/* Details */}
         <Box flex="1" minW={0}>

@@ -68,6 +68,26 @@ async function ensureCollection(Model) {
   }
 }
 
+function buildSubscriptionUpsertUpdate(userId, updates, now) {
+  return {
+    $set: {
+      ...(updates.plan !== undefined ? { plan: updates.plan } : {}),
+      ...(updates.status !== undefined ? { status: updates.status } : {}),
+      ...(updates.creditsUsed !== undefined
+        ? { creditsUsed: updates.creditsUsed }
+        : {}),
+      updatedAt: now,
+    },
+    $setOnInsert: {
+      userId,
+      ...(updates.plan === undefined ? { plan: "free" } : {}),
+      ...(updates.status === undefined ? { status: "active" } : {}),
+      ...(updates.creditsUsed === undefined ? { creditsUsed: 0 } : {}),
+      createdAt: now,
+    },
+  };
+}
+
 export async function createMongoSubscriptionRepository({ uri, dbName }) {
   const connection = await getMongoConnection({ uri, dbName });
   const Subscription = getSubscriptionModel(connection);
@@ -88,23 +108,7 @@ export async function createMongoSubscriptionRepository({ uri, dbName }) {
 
       const subscription = await Subscription.findOneAndUpdate(
         { userId },
-        {
-          $set: {
-            ...(updates.plan !== undefined ? { plan: updates.plan } : {}),
-            ...(updates.status !== undefined ? { status: updates.status } : {}),
-            ...(updates.creditsUsed !== undefined
-              ? { creditsUsed: updates.creditsUsed }
-              : {}),
-            updatedAt: now,
-          },
-          $setOnInsert: {
-            userId,
-            plan: "free",
-            status: "active",
-            creditsUsed: 0,
-            createdAt: now,
-          },
-        },
+        buildSubscriptionUpsertUpdate(userId, updates, now),
         { upsert: true, new: true },
       ).lean();
 

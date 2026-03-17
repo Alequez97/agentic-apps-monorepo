@@ -8,7 +8,10 @@ function shouldSkipCsrf(method) {
 }
 
 function isCsrfExemptPath(path) {
-  return path === "/api/auth/google";
+  const normalizedPath =
+    path.length > 1 && path.endsWith("/") ? path.slice(0, -1) : path;
+
+  return normalizedPath === "/auth/google" || normalizedPath === "/api/auth/google";
 }
 
 function buildCsrfCookieOptions() {
