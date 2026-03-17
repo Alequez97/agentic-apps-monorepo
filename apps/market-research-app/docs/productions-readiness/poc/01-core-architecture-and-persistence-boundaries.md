@@ -2,31 +2,41 @@ NOT DONE
 
 # Core Architecture And Runtime Isolation
 
-Critical findings:
+Current state:
 
-- Queue tasks are not yet modeled as user-owned runtime records, so task visibility and authorization boundaries are still weak.
-- Socket events are still emitted too broadly instead of being scoped to the owning user or session.
-- Queue runtime semantics are still transitional: no `leaseOwner`, no `leaseExpiresAt`, no heartbeat, and no robust multi-worker recovery model.
-- Progress and logs are still local-runtime concerns instead of durable shared runtime outputs.
+- Queue tasks are now modeled as user-owned runtime records via `ownerId`.
+- Socket events are now emitted to user-scoped Socket.IO rooms instead of being broadcast globally.
+- `/api/tasks` is protected by auth and filtered by `ownerId`.
+- Queue runtime semantics now include `leaseOwner`, `leaseExpiresAt`, heartbeat renewal, and expired-lease recovery.
+- Progress/log delivery remains transport-scoped through the app bridge, while task logs themselves are still persisted locally by the runtime.
 
 Why this is not done:
 
-- The persistence boundary is cleaner than before, and queue/app storage can now be configured separately.
-- However, a credible multi-user POC still needs tenant isolation and safer queue ownership semantics, not just cleaner repository structure.
+- The core architectural gap from this POC item is largely implemented in code.
+- This file remains only because the final closeout step should include verification and then either removal of the file or moving any truly remaining concern into a narrower follow-up item.
 
-What must happen next:
+Implemented:
 
-- Add `ownerId` to queued tasks and enforce owner-aware task reads.
-- Stop broadcasting task and market-research events globally; emit them to user-scoped Socket.IO rooms instead.
-- Protect `/api/tasks` behind auth and owner filtering, or remove it from non-admin flows.
-- Add lease-based queue fields and behavior:
+- Added `ownerId` to queued tasks and propagated it through delegated tasks.
+- Replaced global task and market-research emits with user-room-scoped Socket.IO delivery.
+- Protected `/api/tasks` behind auth and owner filtering.
+- Added lease-based queue fields and behavior:
   - `leaseOwner`
   - `leaseExpiresAt`
-  - worker heartbeat / renewal
-- Replace startup-only orphan recovery with lease-aware recovery logic.
+  - heartbeat / renewal
+- Replaced startup-only orphan recovery with lease-aware recovery logic.
+- Added integration coverage for:
+  - socket owner-room delivery in `backend/tests/integration/socket/task-events/owner-room-delivery.test.js`
+  - expired lease requeue in `backend/tests/integration/runtime/leases/expired-lease-requeue.test.js`
 
-POC exit criteria:
+Remaining closeout work:
 
-- one user cannot see another user's tasks or live task events
-- task runtime records are explicitly owned and queryable by owner
-- running tasks can be safely recovered after worker death without relying only on process restart
+- Run one final manual multi-user verification in the deployed POC environment.
+- Optionally add or restore explicit automated coverage for `/api/tasks` owner filtering if broader route-level test coverage is desired.
+- Remove this file once the team is satisfied the POC exit criteria are met.
+
+POC exit criteria status:
+
+- one user cannot see another user's tasks or live task events: implemented in code, partially verified by automated socket coverage
+- task runtime records are explicitly owned and queryable by owner: implemented in code
+- running tasks can be safely recovered after worker death without relying only on process restart: implemented in code, verified by lease recovery coverage

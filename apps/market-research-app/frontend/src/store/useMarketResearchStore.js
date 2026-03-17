@@ -76,6 +76,8 @@ export const useMarketResearchStore = create(
           activityEvents: [],
           analysisStartedAt: Date.now(),
           report: null,
+          competitorTaskMap: {},
+          selectedCompetitorId: null,
         });
 
         try {
@@ -88,8 +90,12 @@ export const useMarketResearchStore = create(
         } catch {
           set({
             isAnalyzing: false,
-            isAnalysisComplete: true,
-            summaryStatus: "idle",
+            isAnalysisComplete: false,
+            summaryStatus: "failed",
+            competitors: [],
+            report: null,
+            competitorTaskMap: {},
+            selectedCompetitorId: null,
           });
         }
       },
@@ -106,6 +112,7 @@ export const useMarketResearchStore = create(
           analysisStartedAt: null,
           selectedCompetitorId: null,
           report: null,
+          competitorTaskMap: {},
         });
       },
 
@@ -258,7 +265,10 @@ export const useMarketResearchStore = create(
         });
       },
 
-      goToSummary: () => useLocationStore.getState().navigate("summary"),
+      goToSummary: () => {
+        if (!get().report) return;
+        useLocationStore.getState().navigate("summary");
+      },
 
       goToProfile: () => useLocationStore.getState().navigate("profile"),
 

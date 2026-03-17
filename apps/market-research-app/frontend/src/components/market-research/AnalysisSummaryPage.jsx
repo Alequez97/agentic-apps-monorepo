@@ -1,6 +1,7 @@
 import { Box } from "@chakra-ui/react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useMarketResearchStore } from "../../store/useMarketResearchStore";
+import { useLocationStore } from "../../store/useLocationStore";
 import { CompetitorDetails } from "./CompetitorDetails";
 import { SummaryHeroBanner } from "./SummaryHeroBanner";
 import { StartBuildingModal } from "./StartBuildingModal";
@@ -14,6 +15,7 @@ export function AnalysisSummaryPage() {
   const idea = useMarketResearchStore((s) => s.idea);
   const competitors = useMarketResearchStore((s) => s.competitors);
   const report = useMarketResearchStore((s) => s.report);
+  const reportId = useMarketResearchStore((s) => s.reportId);
   const selectedCompetitorId = useMarketResearchStore(
     (s) => s.selectedCompetitorId,
   );
@@ -21,11 +23,21 @@ export function AnalysisSummaryPage() {
   const clearSelectedCompetitor = useMarketResearchStore(
     (s) => s.clearSelectedCompetitor,
   );
+  const replaceStep = useLocationStore((s) => s.replace);
 
   const [buildingModalOpen, setBuildingModalOpen] = useState(false);
 
   const selectedCompetitor =
     competitors.find((c) => c.id === selectedCompetitorId) ?? null;
+
+  useEffect(() => {
+    if (report) return;
+    replaceStep(reportId ? "analysis" : "input");
+  }, [report, reportId, replaceStep]);
+
+  if (!report) {
+    return null;
+  }
 
   if (selectedCompetitor) {
     return (

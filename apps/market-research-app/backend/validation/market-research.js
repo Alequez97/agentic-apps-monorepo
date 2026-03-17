@@ -30,5 +30,9 @@ export const upsertSessionBodySchema = Joi.object({
 
 export const analyzeReportBodySchema = Joi.object({
   idea: Joi.string().trim().min(1).required(),
-  regions: Joi.array().items(Joi.string().trim().min(1)).max(20).optional(),
+  regions: Joi.array()
+    .items(Joi.string().trim().min(1))
+    .max(20)
+    .allow(null)
+    .optional(),
 });

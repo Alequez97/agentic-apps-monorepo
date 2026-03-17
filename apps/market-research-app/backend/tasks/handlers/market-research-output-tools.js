@@ -71,7 +71,7 @@ export function createMarketResearchOutputToolExecutor({
               "Structured JSON payload to persist for the selected target.",
           },
         },
-        required: ["target", "payload"],
+        required: ["target"],
       },
     ],
 
@@ -84,6 +84,9 @@ export function createMarketResearchOutputToolExecutor({
       const handler = targets[target];
       if (!handler) {
         throw new Error(`Unsupported output target: ${target}`);
+      }
+      if (payload === undefined) {
+        throw new Error("write_output requires payload");
       }
 
       await handler.save({
