@@ -5,6 +5,7 @@ import {
   getAuthMe,
   logout as apiLogout,
 } from "../api/auth";
+import { setCsrfToken } from "../api/client";
 
 export const useAuthStore = create(
   persist(
@@ -15,6 +16,7 @@ export const useAuthStore = create(
       signInWithGoogle: async (credential) => {
         const response = await apiSignInWithGoogle(credential);
         const user = response.data?.user ?? null;
+        setCsrfToken(response.data?.csrfToken ?? null);
         set({ user });
         return user;
       },
@@ -25,6 +27,7 @@ export const useAuthStore = create(
         } catch {
           // Cookie cleared client-side even if server call fails
         }
+        setCsrfToken(null);
         set({ user: null, returnStep: null });
       },
 
@@ -32,6 +35,7 @@ export const useAuthStore = create(
         try {
           const response = await getAuthMe();
           const user = response.data?.user ?? null;
+          setCsrfToken(response.data?.csrfToken ?? null);
           set({ user });
           return user;
         } catch {

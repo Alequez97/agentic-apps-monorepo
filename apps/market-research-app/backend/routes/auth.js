@@ -26,9 +26,7 @@ export function createAuthRouter({ userRepository, subscriptionService }) {
       logger.error("GOOGLE_CLIENT_ID is not configured", {
         component: "AuthRoutes",
       });
-      return res
-        .status(503)
-        .json({ error: "Google Sign-In is not configured on this server" });
+      return res.status(503).json({ error: "Google Sign-In is not configured on this server" });
     }
 
     let ticket;
@@ -59,7 +57,7 @@ export function createAuthRouter({ userRepository, subscriptionService }) {
     });
 
     res.cookie("jwt", token, COOKIE_OPTIONS);
-    issueCsrfToken(res);
+    const csrfToken = issueCsrfToken(res);
 
     logger.info("User signed in via Google", {
       userId: user.userId,
@@ -74,6 +72,7 @@ export function createAuthRouter({ userRepository, subscriptionService }) {
         picture: user.picture,
         plan: subscription?.plan ?? "free",
       },
+      csrfToken,
     });
   });
 
@@ -85,6 +84,7 @@ export function createAuthRouter({ userRepository, subscriptionService }) {
       return res.status(401).json({ error: "User not found" });
     }
     const subscription = await subscriptionService.getSubscription(user.userId);
+    const csrfToken = issueCsrfToken(res);
 
     return res.json({
       user: {
@@ -94,6 +94,7 @@ export function createAuthRouter({ userRepository, subscriptionService }) {
         picture: user.picture,
         plan: subscription?.plan ?? "free",
       },
+      csrfToken,
     });
   });
 
