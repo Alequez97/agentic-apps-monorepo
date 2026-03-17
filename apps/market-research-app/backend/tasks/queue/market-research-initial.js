@@ -10,6 +10,7 @@ import config from "../../config.js";
  * @param {Object} deps.queueStore
  * @param {Object} deps.taskProgressStore
  * @param {Object} params
+ * @param {string} params.ownerId
  * @param {string} params.sessionId
  * @param {string} params.idea
  * @param {number} [params.numCompetitors]
@@ -18,10 +19,13 @@ import config from "../../config.js";
  */
 export async function queueMarketResearchInitialTask(
   { queueStore, taskProgressStore },
-  { sessionId, idea, numCompetitors, regions } = {},
+  { ownerId, sessionId, idea, numCompetitors, regions } = {},
 ) {
-  if (!sessionId || !idea) {
-    return { success: false, error: "sessionId and idea are required" };
+  if (!ownerId || !sessionId || !idea) {
+    return {
+      success: false,
+      error: "ownerId, sessionId, and idea are required",
+    };
   }
 
   const taskConfig = config.tasks[TASK_TYPES.MARKET_RESEARCH_INITIAL];
@@ -36,6 +40,7 @@ export async function queueMarketResearchInitialTask(
 
   const task = {
     id: taskId,
+    ownerId,
     type: TASK_TYPES.MARKET_RESEARCH_INITIAL,
     status: TASK_STATUS.PENDING,
     createdAt: new Date().toISOString(),
@@ -62,6 +67,7 @@ export async function queueMarketResearchInitialTask(
     component: "MarketResearchInitialQueue",
     taskId,
     sessionId,
+    ownerId,
   });
 
   return task;

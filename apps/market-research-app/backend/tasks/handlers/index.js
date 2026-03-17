@@ -81,6 +81,7 @@ export function createTaskHandlersByType({
               taskScheduler.queueMarketResearchCompetitorTask(params),
             buildQueueParams: ({ params, requestContent, parentTaskId }) => ({
               ...params,
+              ownerId: task.ownerId,
               competitorBriefing: requestContent,
               delegatedByTaskId: parentTaskId,
             }),

@@ -182,6 +182,7 @@ export function createMarketResearchRouter({
 
     try {
       const task = await taskQueue.queueMarketResearchInitialTask({
+        ownerId: req.userId,
         sessionId: reportId,
         idea,
         numCompetitors,

@@ -18,6 +18,9 @@ export function assertTaskQueueStoreContract(queueStore) {
     "requeueTask",
     "deleteTask",
     "restartTask",
+    "renewLease",
+    "releaseLease",
+    "requeueExpiredTasks",
   ];
 
   requiredMethods.forEach((methodName) =>

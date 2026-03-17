@@ -10,6 +10,7 @@ import config from "../../config.js";
  * @param {Object} deps.queueStore
  * @param {Object} deps.taskProgressStore
  * @param {Object} params
+ * @param {string} params.ownerId
  * @param {string} params.sessionId
  * @param {string} params.idea
  * @param {string[]} [params.dependsOn] - task IDs this task depends on
@@ -17,10 +18,13 @@ import config from "../../config.js";
  */
 export async function queueMarketResearchSummaryTask(
   { queueStore, taskProgressStore },
-  { sessionId, idea, dependsOn } = {},
+  { ownerId, sessionId, idea, dependsOn } = {},
 ) {
-  if (!sessionId || !idea) {
-    return { success: false, error: "sessionId and idea are required" };
+  if (!ownerId || !sessionId || !idea) {
+    return {
+      success: false,
+      error: "ownerId, sessionId, and idea are required",
+    };
   }
 
   const taskConfig = config.tasks[TASK_TYPES.MARKET_RESEARCH_SUMMARY];
@@ -35,6 +39,7 @@ export async function queueMarketResearchSummaryTask(
 
   const task = {
     id: taskId,
+    ownerId,
     type: TASK_TYPES.MARKET_RESEARCH_SUMMARY,
     status: TASK_STATUS.PENDING,
     createdAt: new Date().toISOString(),
@@ -61,6 +66,7 @@ export async function queueMarketResearchSummaryTask(
     taskId,
     sessionId,
     dependencyCount: task.dependsOn.length,
+    ownerId,
   });
 
   return task;

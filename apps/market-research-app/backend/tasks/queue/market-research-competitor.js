@@ -10,6 +10,7 @@ import config from "../../config.js";
  * @param {Object} deps.queueStore
  * @param {Object} deps.taskProgressStore
  * @param {Object} params
+ * @param {string} params.ownerId
  * @param {string} params.sessionId
  * @param {string} params.competitorId - kebab-case identifier (e.g. "stripe")
  * @param {string} params.competitorName
@@ -22,6 +23,7 @@ import config from "../../config.js";
 export async function queueMarketResearchCompetitorTask(
   { queueStore, taskProgressStore },
   {
+    ownerId,
     sessionId,
     competitorId,
     competitorName,
@@ -31,11 +33,17 @@ export async function queueMarketResearchCompetitorTask(
     delegatedByTaskId = null,
   } = {},
 ) {
-  if (!sessionId || !competitorId || !competitorName || !competitorUrl) {
+  if (
+    !ownerId ||
+    !sessionId ||
+    !competitorId ||
+    !competitorName ||
+    !competitorUrl
+  ) {
     return {
       success: false,
       error:
-        "sessionId, competitorId, competitorName, and competitorUrl are required",
+        "ownerId, sessionId, competitorId, competitorName, and competitorUrl are required",
     };
   }
 
@@ -51,6 +59,7 @@ export async function queueMarketResearchCompetitorTask(
 
   const task = {
     id: taskId,
+    ownerId,
     type: TASK_TYPES.MARKET_RESEARCH_COMPETITOR,
     status: TASK_STATUS.PENDING,
     createdAt: new Date().toISOString(),
@@ -81,6 +90,7 @@ export async function queueMarketResearchCompetitorTask(
     taskId,
     sessionId,
     competitorId,
+    ownerId,
   });
 
   return task;

@@ -40,6 +40,7 @@ export function marketResearchCompetitorHandler(
       }
 
       taskEventPublisher.publish(APP_EVENTS.MARKET_RESEARCH_COMPETITOR_UPDATED, {
+        ownerId: task.ownerId,
         sessionId,
         taskId: task.id,
         competitor,

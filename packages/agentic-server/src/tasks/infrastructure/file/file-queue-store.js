@@ -9,6 +9,26 @@ function taskPath(queueDir, folder, taskId) {
   return path.join(queueDir, "tasks", folder, `${taskId}.json`);
 }
 
+function normalizeLeaseDurationMs(leaseDurationMs) {
+  return leaseDurationMs > 0 ? leaseDurationMs : 30000;
+}
+
+function getLeaseTimestamps(leaseDurationMs) {
+  const now = new Date();
+  return {
+    nowIso: now.toISOString(),
+    leaseExpiresAt: new Date(
+      now.getTime() + normalizeLeaseDurationMs(leaseDurationMs),
+    ).toISOString(),
+  };
+}
+
+function clearLeaseFields(task) {
+  delete task.leaseOwner;
+  delete task.leaseExpiresAt;
+  delete task.lastHeartbeatAt;
+}
+
 async function readTask(queueDir, taskId) {
   const folders = Object.values(TASK_FOLDERS);
   for (const folder of folders) {
@@ -28,6 +48,18 @@ async function readTask(queueDir, taskId) {
 async function enqueueTask(queueDir, task) {
   if (!task.logFile) {
     task.logFile = `logs/${task.id}.log`;
+  }
+  if (!("ownerId" in task)) {
+    task.ownerId = null;
+  }
+  if (!("leaseOwner" in task)) {
+    task.leaseOwner = null;
+  }
+  if (!("leaseExpiresAt" in task)) {
+    task.leaseExpiresAt = null;
+  }
+  if (!("lastHeartbeatAt" in task)) {
+    task.lastHeartbeatAt = null;
   }
   const filePath = taskPath(queueDir, TASK_FOLDERS.PENDING, task.id);
   await fs.mkdir(path.dirname(filePath), { recursive: true });
@@ -62,7 +94,7 @@ async function listRunning(queueDir) {
 }
 
 async function listTasks(queueDir, filters = {}) {
-  const { dateFrom, dateTo, status } = filters;
+  const { dateFrom, dateTo, status, ownerId } = filters;
   const foldersToSearch =
     status && status.length > 0
       ? status.map((s) => TASK_FOLDERS[s.toUpperCase()])
@@ -81,18 +113,26 @@ async function listTasks(queueDir, filters = {}) {
     const toDate = new Date(dateTo);
     tasks = tasks.filter((t) => new Date(t.createdAt) <= toDate);
   }
+  if (ownerId) {
+    tasks = tasks.filter((t) => t.ownerId === ownerId);
+  }
 
   return tasks.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 }
 
-async function claimTask(queueDir, taskId) {
+async function claimTask(queueDir, taskId, options = {}) {
   const pendingFilePath = taskPath(queueDir, TASK_FOLDERS.PENDING, taskId);
   const runningFilePath = taskPath(queueDir, TASK_FOLDERS.RUNNING, taskId);
+  const { leaseOwner = null, leaseDurationMs = 0 } = options;
 
   const content = await fs.readFile(pendingFilePath, "utf-8");
   const task = JSON.parse(content);
+  const { nowIso, leaseExpiresAt } = getLeaseTimestamps(leaseDurationMs);
   task.status = TASK_STATUS.RUNNING;
-  task.startedAt = new Date().toISOString();
+  task.startedAt = nowIso;
+  task.leaseOwner = leaseOwner;
+  task.leaseExpiresAt = leaseExpiresAt;
+  task.lastHeartbeatAt = nowIso;
 
   await fs.mkdir(path.dirname(runningFilePath), { recursive: true });
   await fs.writeFile(runningFilePath, JSON.stringify(task, null, 2), "utf-8");
@@ -109,6 +149,7 @@ async function completeTask(queueDir, taskId) {
   const task = JSON.parse(content);
   task.status = TASK_STATUS.COMPLETED;
   task.completedAt = new Date().toISOString();
+  clearLeaseFields(task);
 
   await fs.mkdir(path.dirname(completedFilePath), { recursive: true });
   await fs.writeFile(completedFilePath, JSON.stringify(task, null, 2), "utf-8");
@@ -136,6 +177,7 @@ async function failTask(queueDir, taskId, error) {
   task.status = TASK_STATUS.FAILED;
   task.failedAt = new Date().toISOString();
   task.error = error || "Task execution failed";
+  clearLeaseFields(task);
 
   await fs.writeFile(failedFilePath, JSON.stringify(task, null, 2), "utf-8");
   await fs.unlink(sourcePath);
@@ -172,6 +214,7 @@ async function cancelTask(queueDir, taskId) {
 
   task.status = TASK_STATUS.CANCELED;
   task.canceledAt = new Date().toISOString();
+  clearLeaseFields(task);
 
   await fs.mkdir(path.dirname(canceledFilePath), { recursive: true });
   await fs.writeFile(canceledFilePath, JSON.stringify(task, null, 2), "utf-8");
@@ -188,6 +231,7 @@ async function requeueTask(queueDir, taskId) {
   const task = JSON.parse(content);
   task.status = TASK_STATUS.PENDING;
   delete task.startedAt;
+  clearLeaseFields(task);
 
   await fs.mkdir(path.dirname(pendingFilePath), { recursive: true });
   await fs.writeFile(pendingFilePath, JSON.stringify(task, null, 2), "utf-8");
@@ -253,6 +297,7 @@ async function restartTask(queueDir, taskId) {
   delete task.failedAt;
   delete task.canceledAt;
   delete task.error;
+  clearLeaseFields(task);
 
   await fs.mkdir(path.dirname(pendingFilePath), { recursive: true });
   await fs.writeFile(pendingFilePath, JSON.stringify(task, null, 2), "utf-8");
@@ -336,6 +381,83 @@ async function deleteTask(queueDir, taskId) {
   return { success: true };
 }
 
+async function renewLease(queueDir, taskId, leaseOwner, leaseDurationMs = 0) {
+  const runningFilePath = taskPath(queueDir, TASK_FOLDERS.RUNNING, taskId);
+  const content = await fs.readFile(runningFilePath, "utf-8");
+  const task = JSON.parse(content);
+
+  if (task.status !== TASK_STATUS.RUNNING) {
+    throw new Error(`Task ${taskId} is not running`);
+  }
+  if (task.leaseOwner && task.leaseOwner !== leaseOwner) {
+    throw new Error(`Task ${taskId} is leased by another worker`);
+  }
+
+  const { nowIso, leaseExpiresAt } = getLeaseTimestamps(leaseDurationMs);
+  task.leaseOwner = leaseOwner;
+  task.leaseExpiresAt = leaseExpiresAt;
+  task.lastHeartbeatAt = nowIso;
+
+  await fs.writeFile(runningFilePath, JSON.stringify(task, null, 2), "utf-8");
+  return task;
+}
+
+async function releaseLease(queueDir, taskId, leaseOwner = null) {
+  const runningFilePath = taskPath(queueDir, TASK_FOLDERS.RUNNING, taskId);
+  let task;
+
+  try {
+    const content = await fs.readFile(runningFilePath, "utf-8");
+    task = JSON.parse(content);
+  } catch (error) {
+    if (error.code === "ENOENT") return null;
+    throw error;
+  }
+
+  if (
+    leaseOwner &&
+    task.leaseOwner &&
+    task.leaseOwner !== leaseOwner
+  ) {
+    return task;
+  }
+
+  task.leaseOwner = null;
+  task.leaseExpiresAt = null;
+  task.lastHeartbeatAt = null;
+  await fs.writeFile(runningFilePath, JSON.stringify(task, null, 2), "utf-8");
+  return task;
+}
+
+async function requeueExpiredTasks(queueDir, now = new Date()) {
+  const runningTasks = await listRunning(queueDir);
+  const nowMs = now instanceof Date ? now.getTime() : new Date(now).getTime();
+  const requeuedTaskIds = [];
+
+  for (const task of runningTasks) {
+    const leaseExpiresAtMs = task.leaseExpiresAt
+      ? new Date(task.leaseExpiresAt).getTime()
+      : Number.NaN;
+    const isExpired =
+      !task.leaseOwner ||
+      !task.leaseExpiresAt ||
+      Number.isNaN(leaseExpiresAtMs) ||
+      leaseExpiresAtMs <= nowMs;
+
+    if (!isExpired) {
+      continue;
+    }
+
+    await requeueTask(queueDir, task.id);
+    requeuedTaskIds.push(task.id);
+  }
+
+  return {
+    recovered: requeuedTaskIds.length,
+    tasks: requeuedTaskIds,
+  };
+}
+
 export function createFileQueueStore({ queueDir }) {
   return {
     readTask: (taskId) => readTask(queueDir, taskId),
@@ -343,13 +465,18 @@ export function createFileQueueStore({ queueDir }) {
     listPending: () => listPending(queueDir),
     listRunning: () => listRunning(queueDir),
     listTasks: (filters) => listTasks(queueDir, filters),
-    claimTask: (taskId) => claimTask(queueDir, taskId),
+    claimTask: (taskId, options) => claimTask(queueDir, taskId, options),
     completeTask: (taskId) => completeTask(queueDir, taskId),
     failTask: (taskId, error) => failTask(queueDir, taskId, error),
     cancelTask: (taskId) => cancelTask(queueDir, taskId),
     requeueTask: (taskId) => requeueTask(queueDir, taskId),
     restartTask: (taskId) => restartTask(queueDir, taskId),
     deleteTask: (taskId) => deleteTask(queueDir, taskId),
+    renewLease: (taskId, leaseOwner, leaseDurationMs) =>
+      renewLease(queueDir, taskId, leaseOwner, leaseDurationMs),
+    releaseLease: (taskId, leaseOwner) =>
+      releaseLease(queueDir, taskId, leaseOwner),
+    requeueExpiredTasks: (now) => requeueExpiredTasks(queueDir, now),
   };
 }
 
@@ -366,4 +493,7 @@ export {
   requeueTask,
   restartTask,
   deleteTask,
+  renewLease,
+  releaseLease,
+  requeueExpiredTasks,
 };

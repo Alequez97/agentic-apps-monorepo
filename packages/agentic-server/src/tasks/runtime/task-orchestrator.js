@@ -63,7 +63,8 @@ export class TaskOrchestrator {
     return task;
   }
 
-  async executeTask(taskId) {
+  async executeTask(taskId, options = {}) {
+    const { queueProcessorId = null, leaseDurationMs = 0 } = options;
     const task = await this.queueStore.readTask(taskId);
 
     if (!task) {
@@ -89,7 +90,21 @@ export class TaskOrchestrator {
 
     let activeTask = task;
     if (task.status === TASK_STATUS.PENDING) {
-      activeTask = await this.queueStore.claimTask(taskId);
+      activeTask = await this.queueStore.claimTask(taskId, {
+        leaseOwner: queueProcessorId,
+        leaseDurationMs,
+      });
+    } else if (
+      queueProcessorId &&
+      activeTask.leaseOwner &&
+      activeTask.leaseOwner !== queueProcessorId
+    ) {
+      return {
+        success: false,
+        code: TASK_ERROR_CODES.INVALID_STATUS,
+        error: `Task ${taskId} is leased by another processor`,
+        taskId,
+      };
     }
 
     this.publishTaskEvent(TASK_EVENTS.STARTED, { task: activeTask });
@@ -224,6 +239,25 @@ export class TaskOrchestrator {
 
   async recoverOrphanedTasks() {
     try {
+      if (typeof this.queueStore.requeueExpiredTasks === "function") {
+        const recovery = await this.queueStore.requeueExpiredTasks();
+        if (recovery.recovered === 0) {
+          logger.info("No expired leased tasks to recover", {
+            component: "TaskOrchestrator",
+          });
+          return recovery;
+        }
+
+        logger.info(
+          `Recovered ${recovery.recovered} expired leased task(s)`,
+          {
+            component: "TaskOrchestrator",
+            taskIds: recovery.tasks,
+          },
+        );
+        return recovery;
+      }
+
       const runningTasks = await this.queueStore.listRunning();
       if (runningTasks.length === 0) {
         logger.info("No orphaned running tasks to recover", {
@@ -260,6 +294,27 @@ export class TaskOrchestrator {
         component: "TaskOrchestrator",
       });
       return { recovered: 0, tasks: [], error: error.message };
+    }
+  }
+
+  async renewRunningLeases(queueProcessorId, leaseDurationMs) {
+    const taskIds = [...this._runningControllers.keys()];
+
+    for (const taskId of taskIds) {
+      try {
+        await this.queueStore.renewLease(
+          taskId,
+          queueProcessorId,
+          leaseDurationMs,
+        );
+      } catch (error) {
+        logger.warn(`Failed to renew lease for task ${taskId}`, {
+          component: "TaskOrchestrator",
+          taskId,
+          queueProcessorId,
+          error: error.message,
+        });
+      }
     }
   }
 }

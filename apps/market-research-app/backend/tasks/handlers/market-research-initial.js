@@ -52,6 +52,7 @@ export function marketResearchInitialHandler(
 
     const queuedSummaryTask = await taskScheduler.queueMarketResearchSummaryTask(
       {
+        ownerId: task.ownerId,
         sessionId,
         idea: report.idea || idea,
         dependsOn: competitorTasks.map((entry) => entry.taskId).filter(Boolean),

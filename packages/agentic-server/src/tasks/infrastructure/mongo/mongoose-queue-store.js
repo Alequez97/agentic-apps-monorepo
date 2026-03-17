@@ -4,6 +4,10 @@ import { TASK_STATUS } from "../../constants/task-status.js";
 
 const connectionCache = new Map();
 
+function normalizeLeaseDurationMs(leaseDurationMs) {
+  return leaseDurationMs > 0 ? leaseDurationMs : 30000;
+}
+
 function createConnectionKey(uri, dbName) {
   return `${uri}::${dbName}`;
 }
@@ -40,10 +44,14 @@ function getQueueTaskModel(connection) {
       type: { type: String, required: true, index: true },
       status: { type: String, required: true, index: true },
       createdAt: { type: String, required: true, index: true },
+      ownerId: { type: String, default: null, index: true },
       startedAt: String,
       completedAt: String,
       failedAt: String,
       canceledAt: String,
+      leaseOwner: { type: String, default: null, index: true },
+      leaseExpiresAt: { type: String, default: null, index: true },
+      lastHeartbeatAt: { type: String, default: null },
       dependsOn: { type: [String], default: [] },
       params: { type: mongoose.Schema.Types.Mixed, default: {} },
       agentConfig: { type: mongoose.Schema.Types.Mixed, default: {} },
@@ -59,6 +67,7 @@ function getQueueTaskModel(connection) {
   );
 
   schema.index({ status: 1, createdAt: 1 });
+  schema.index({ ownerId: 1, createdAt: -1 });
   schema.index({ "params.sessionId": 1, createdAt: -1 });
 
   return connection.model("QueueTask", schema);
@@ -110,17 +119,27 @@ export async function createMongoQueueStore({ uri, dbName }) {
           query.createdAt.$lte = new Date(filters.dateTo).toISOString();
         }
       }
+      if (filters.ownerId) {
+        query.ownerId = filters.ownerId;
+      }
 
       return QueueTask.find(query).sort({ createdAt: -1 }).lean();
     },
 
-    async claimTask(taskId) {
+    async claimTask(taskId, options = {}) {
+      const { leaseOwner = null, leaseDurationMs = 0 } = options;
+      const now = new Date();
       const task = await QueueTask.findOneAndUpdate(
         { id: taskId, status: TASK_STATUS.PENDING },
         {
           $set: {
             status: TASK_STATUS.RUNNING,
-            startedAt: new Date().toISOString(),
+            startedAt: now.toISOString(),
+            leaseOwner,
+            leaseExpiresAt: new Date(
+              now.getTime() + normalizeLeaseDurationMs(leaseDurationMs),
+            ).toISOString(),
+            lastHeartbeatAt: now.toISOString(),
           },
         },
         { new: true },
@@ -140,6 +159,9 @@ export async function createMongoQueueStore({ uri, dbName }) {
           $set: {
             status: TASK_STATUS.COMPLETED,
             completedAt: new Date().toISOString(),
+            leaseOwner: null,
+            leaseExpiresAt: null,
+            lastHeartbeatAt: null,
           },
         },
         { new: true },
@@ -163,6 +185,9 @@ export async function createMongoQueueStore({ uri, dbName }) {
             status: TASK_STATUS.FAILED,
             failedAt: new Date().toISOString(),
             error: error || "Task execution failed",
+            leaseOwner: null,
+            leaseExpiresAt: null,
+            lastHeartbeatAt: null,
           },
         },
         { new: true },
@@ -185,6 +210,9 @@ export async function createMongoQueueStore({ uri, dbName }) {
           $set: {
             status: TASK_STATUS.CANCELED,
             canceledAt: new Date().toISOString(),
+            leaseOwner: null,
+            leaseExpiresAt: null,
+            lastHeartbeatAt: null,
           },
         },
         { new: true },
@@ -205,7 +233,12 @@ export async function createMongoQueueStore({ uri, dbName }) {
       const task = await QueueTask.findOneAndUpdate(
         { id: taskId, status: TASK_STATUS.RUNNING },
         {
-          $set: { status: TASK_STATUS.PENDING },
+          $set: {
+            status: TASK_STATUS.PENDING,
+            leaseOwner: null,
+            leaseExpiresAt: null,
+            lastHeartbeatAt: null,
+          },
           $unset: { startedAt: 1 },
         },
         { new: true },
@@ -254,6 +287,9 @@ export async function createMongoQueueStore({ uri, dbName }) {
             failedAt: 1,
             canceledAt: 1,
             error: 1,
+            leaseOwner: 1,
+            leaseExpiresAt: 1,
+            lastHeartbeatAt: 1,
           },
         },
         { new: true },
@@ -282,6 +318,91 @@ export async function createMongoQueueStore({ uri, dbName }) {
 
       await QueueTask.deleteOne({ id: taskId });
       return { success: true };
+    },
+
+    async renewLease(taskId, leaseOwner, leaseDurationMs = 0) {
+      const now = new Date();
+      const task = await QueueTask.findOneAndUpdate(
+        {
+          id: taskId,
+          status: TASK_STATUS.RUNNING,
+          $or: [{ leaseOwner }, { leaseOwner: null }],
+        },
+        {
+          $set: {
+            leaseOwner,
+            leaseExpiresAt: new Date(
+              now.getTime() + normalizeLeaseDurationMs(leaseDurationMs),
+            ).toISOString(),
+            lastHeartbeatAt: now.toISOString(),
+          },
+        },
+        { new: true },
+      ).lean(false);
+
+      if (!task) {
+        throw new Error(`Task ${taskId} is not running or is leased elsewhere`);
+      }
+
+      return mapTask(task);
+    },
+
+    async releaseLease(taskId, leaseOwner = null) {
+      const query = {
+        id: taskId,
+        status: TASK_STATUS.RUNNING,
+      };
+      if (leaseOwner) {
+        query.$or = [{ leaseOwner }, { leaseOwner: null }];
+      }
+
+      const task = await QueueTask.findOneAndUpdate(
+        query,
+        {
+          $set: {
+            leaseOwner: null,
+            leaseExpiresAt: null,
+            lastHeartbeatAt: null,
+          },
+        },
+        { new: true },
+      ).lean(false);
+
+      return mapTask(task);
+    },
+
+    async requeueExpiredTasks(now = new Date()) {
+      const nowIso = (now instanceof Date ? now : new Date(now)).toISOString();
+      const expiredTasks = await QueueTask.find({
+        status: TASK_STATUS.RUNNING,
+        $or: [
+          { leaseOwner: null },
+          { leaseExpiresAt: null },
+          { leaseExpiresAt: { $lte: nowIso } },
+        ],
+      })
+        .select({ id: 1 })
+        .lean();
+
+      if (expiredTasks.length === 0) {
+        return { recovered: 0, tasks: [] };
+      }
+
+      const taskIds = expiredTasks.map((task) => task.id);
+      await QueueTask.updateMany(
+        { id: { $in: taskIds } },
+        {
+          $set: {
+            status: TASK_STATUS.PENDING,
+            leaseOwner: null,
+            leaseExpiresAt: null,
+            lastHeartbeatAt: null,
+          },
+          $unset: { startedAt: 1 },
+        },
+      );
+
+      return { recovered: taskIds.length, tasks: taskIds };
     },
   };
 }

@@ -1,9 +1,6 @@
 // Tasks
 export { TaskOrchestrator } from "./tasks/runtime/task-orchestrator.js";
-export {
-  createQueueWorker,
-  createQueueProcessor,
-} from "./tasks/runtime/queue-worker.js";
+export { createQueueProcessor } from "./tasks/runtime/queue-processor.js";
 export {
   LLMTaskRunner,
   LLMApiExecutor,

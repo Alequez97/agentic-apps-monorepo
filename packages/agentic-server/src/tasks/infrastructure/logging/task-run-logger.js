@@ -15,6 +15,7 @@ export async function setupTaskLogger(task, { logsDir, emitEvent }) {
     if (emitEvent && publicLogText) {
       emitEvent(TASK_EVENTS.PROGRESS, {
         taskId: task.id,
+        ownerId: task.ownerId ?? null,
         type: task.type,
         params: task.params,
         message: publicLogText,
@@ -41,6 +42,7 @@ export async function setupTaskLogger(task, { logsDir, emitEvent }) {
     if (emitEvent && publicLogText) {
       emitEvent(TASK_EVENTS.PROGRESS, {
         taskId: task.id,
+        ownerId: task.ownerId ?? null,
         type: task.type,
         params: task.params,
         message: publicLogText,
@@ -50,6 +52,7 @@ export async function setupTaskLogger(task, { logsDir, emitEvent }) {
     } else if (emitEvent && stage) {
       emitEvent(TASK_EVENTS.PROGRESS, {
         taskId: task.id,
+        ownerId: task.ownerId ?? null,
         type: task.type,
         params: task.params,
         message,

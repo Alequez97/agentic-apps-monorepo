@@ -84,6 +84,7 @@ export async function marketResearchSummaryHandler(
       );
 
       taskEventPublisher.publish(APP_EVENTS.MARKET_RESEARCH_REPORT_READY, {
+        ownerId: task.ownerId,
         sessionId,
         taskId: task.id,
       });
