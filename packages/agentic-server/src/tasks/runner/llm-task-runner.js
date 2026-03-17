@@ -12,21 +12,11 @@ import {
   logTaskHeader,
   logTaskSuccess,
   logTaskError,
-} from "./task-logger.js";
-import { getProviderFromModel } from "../utils/model-utils.js";
-import * as logger from "../utils/logger.js";
+} from "../infrastructure/logging/task-run-logger.js";
+import { getProviderFromModel } from "../../utils/model-utils.js";
+import * as logger from "../../utils/logger.js";
 
-/**
- * LLM API task executor.
- *
- * Constructor options:
- * @param {Object} opts
- * @param {Object} opts.apiKeys - { anthropic, openai, deepseek, openrouter }
- * @param {string} opts.workingDirectory - Absolute path to the project root the agent will read/write
- * @param {string} opts.allowedOutputPrefix - Output directory prefix for FileToolExecutor (e.g. ".market-research")
- * @param {string} opts.logsDir - Absolute path where per-task log files are written
- */
-export class LLMApiExecutor {
+export class LLMTaskRunner {
   constructor({ apiKeys, workingDirectory, allowedOutputPrefix, logsDir }) {
     this.apiKeys = apiKeys;
     this.workingDirectory = workingDirectory;
@@ -34,20 +24,11 @@ export class LLMApiExecutor {
     this.logsDir = logsDir;
   }
 
-  /**
-   * Detect if any API key is configured.
-   * @returns {boolean}
-   */
   isAvailable() {
     const { anthropic, openai, deepseek, openrouter } = this.apiKeys;
     return Boolean(anthropic || openai || deepseek || openrouter);
   }
 
-  /**
-   * Create an LLMAgent from task agentConfig.
-   * @param {Object} agentConfig - { model, maxTokens, reasoningEffort, maxIterations }
-   * @returns {LLMAgent}
-   */
   createAgent(agentConfig) {
     const { model, maxTokens, reasoningEffort, maxIterations } = agentConfig;
     const { apiKeys, workingDirectory, allowedOutputPrefix } = this;
@@ -114,17 +95,9 @@ export class LLMApiExecutor {
     });
   }
 
-  /**
-   * Execute a task.
-   * @param {Object} task - Task object (includes task.agentConfig)
-   * @param {Function} buildHandler - Async fn(task, taskLogger, agent) → handler config
-   * @param {Function} emitEvent - orchestrator.emit.bind(orchestrator)
-   * @param {AbortSignal} [signal] - Cancellation signal
-   * @returns {Promise<{ success: boolean, taskId: string, logFile?: string, error?: string, cancelled?: boolean }>}
-   */
   async execute(task, buildHandler, emitEvent, signal) {
-    logger.info(`Executing LLM API task: ${task.type}`, {
-      component: "LLMApiExecutor",
+    logger.info(`Executing LLM task: ${task.type}`, {
+      component: "LLMTaskRunner",
       taskId: task.id,
       model: task.agentConfig?.model,
     });
@@ -142,13 +115,13 @@ export class LLMApiExecutor {
     try {
       logTaskHeader(taskLogger, task, this.workingDirectory);
 
-      taskLogger.info("🤖 Initializing LLM client...", {
-        component: "LLMApiExecutor",
+      taskLogger.info("Initializing LLM client...", {
+        component: "LLMTaskRunner",
         model: task.agentConfig?.model,
       });
       const agent = this.createAgent(task.agentConfig);
-      taskLogger.info("✅ LLM client initialized", {
-        component: "LLMApiExecutor",
+      taskLogger.info("LLM client initialized", {
+        component: "LLMTaskRunner",
       });
 
       const taskHandler = await buildHandler(task, taskLogger, agent);
@@ -157,8 +130,8 @@ export class LLMApiExecutor {
         stage: PROGRESS_STAGES.ANALYZING,
       });
       taskLogger.info(
-        `🔄 Starting analysis loop (max ${agent.maxIterations} iterations)`,
-        { component: "LLMApiExecutor" },
+        `Starting analysis loop (max ${agent.maxIterations} iterations)`,
+        { component: "LLMTaskRunner" },
       );
 
       const result = await agent.run(taskHandler, signal);
@@ -200,3 +173,5 @@ export class LLMApiExecutor {
     }
   }
 }
+
+export const LLMApiExecutor = LLMTaskRunner;

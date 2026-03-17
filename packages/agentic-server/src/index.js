@@ -1,23 +1,26 @@
-// Task engine
-export { TaskOrchestrator } from "./orchestrator/task.js";
-export { createQueueProcessor } from "./orchestrator/queue-processor.js";
-
-// Task execution
-export { LLMApiExecutor } from "./executor/llm-api.js";
-export { buildTaskHandler } from "./handler-builder/task-handler-builder.js";
+// Tasks
+export { TaskOrchestrator } from "./tasks/runtime/task-orchestrator.js";
+export {
+  createQueueWorker,
+  createQueueProcessor,
+} from "./tasks/runtime/queue-worker.js";
+export {
+  LLMTaskRunner,
+  LLMApiExecutor,
+} from "./tasks/runner/llm-task-runner.js";
+export { buildTaskHandler } from "./tasks/runner/task-handler-builder.js";
 export {
   setupTaskLogger,
   logTaskHeader,
   logTaskSuccess,
   logTaskError,
-} from "./executor/task-logger.js";
+} from "./tasks/infrastructure/logging/task-run-logger.js";
 export {
-  getProgressFileRelativePath,
-  ensureProgressDirectory,
-  deleteProgressFile,
-} from "./executor/task-progress.js";
-
-// Persistence
+  getProgressLocation,
+  initializeTaskProgress,
+  clearTaskProgress,
+  createFileTaskProgressStore,
+} from "./tasks/infrastructure/file/file-task-progress-store.js";
 export {
   readTask,
   enqueueTask,
@@ -31,15 +34,19 @@ export {
   requeueRunningTask,
   restartTask,
   deleteTask,
-} from "./persistence/tasks.js";
-export { readLog } from "./persistence/logs.js";
+  createFileQueueStore,
+} from "./tasks/infrastructure/file/file-queue-store.js";
+export {
+  readLog,
+  createFileTaskLogStore,
+} from "./tasks/infrastructure/file/file-task-log-store.js";
+export { TASK_STATUS, TASK_FOLDERS } from "./tasks/constants/task-status.js";
+export { TASK_ERROR_CODES } from "./tasks/constants/task-error-codes.js";
+export { TASK_EVENTS } from "./tasks/constants/task-events.js";
+
+// Persistence helpers
 export { tryReadJsonFile, appendRevision } from "./persistence/utils.js";
 
-// Logger
+// Shared utils
 export * as logger from "./utils/logger.js";
 export { getProviderFromModel } from "./utils/model-utils.js";
-
-// Constants
-export { TASK_STATUS, TASK_FOLDERS } from "./constants/task-status.js";
-export { TASK_ERROR_CODES } from "./constants/task-error-codes.js";
-export { TASK_EVENTS } from "./constants/task-events.js";

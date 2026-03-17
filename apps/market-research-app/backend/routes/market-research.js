@@ -7,7 +7,6 @@ import {
   getCompetitorProfile,
   listSessions,
 } from "../persistence/market-research.js";
-import { queueMarketResearchInitialTask } from "../tasks/queue/market-research-initial.js";
 import { getSubscriptionPlanDetails } from "../services/subscription.js";
 import { requireAuth } from "../middleware/auth.js";
 
@@ -27,7 +26,7 @@ async function requireOwnedReport(req, res, reportId) {
   return reportSession;
 }
 
-export function createMarketResearchRouter(orchestrator) {
+export function createMarketResearchRouter({ taskQueue }) {
   const router = Router();
 
   // GET /api/market-research
@@ -157,7 +156,7 @@ export function createMarketResearchRouter(orchestrator) {
     }
 
     try {
-      const task = await queueMarketResearchInitialTask(orchestrator, {
+      const task = await taskQueue.queueMarketResearchInitialTask({
         sessionId: reportId,
         idea: idea.trim(),
         numCompetitors,

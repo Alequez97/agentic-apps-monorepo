@@ -1,89 +1,65 @@
-import { EventEmitter } from "events";
-import * as tasksPersistence from "../persistence/tasks.js";
-import { LLMApiExecutor } from "../executor/llm-api.js";
-import { deleteProgressFile } from "../executor/task-progress.js";
 import { TASK_EVENTS } from "../constants/task-events.js";
 import { TASK_ERROR_CODES } from "../constants/task-error-codes.js";
 import { TASK_STATUS } from "../constants/task-status.js";
-import { AGENTS } from "@jfs/llm-core";
-import * as logger from "../utils/logger.js";
+import * as logger from "../../utils/logger.js";
 
-/**
- * Task orchestrator and lifecycle manager.
- *
- * Extends EventEmitter — the consuming app subscribes to TASK_EVENTS and bridges
- * them to whatever transport it uses (Socket.IO, stdout, etc.).
- *
- * Constructor options:
- * @param {Object} opts
- * @param {Object} opts.registry - Map of task type → async handler factory fn(task, taskLogger, agent)
- * @param {string} opts.queueDir - Absolute path to the analysis root (contains tasks/, logs/, temp/)
- * @param {Object} opts.apiKeys - { anthropic?, openai?, deepseek?, openrouter? }
- * @param {string} opts.workingDirectory - Absolute path to the project root the agent will read/write
- * @param {string} [opts.allowedOutputPrefix=".code-analysis"] - FileToolExecutor write boundary prefix
- */
-export class TaskOrchestrator extends EventEmitter {
+export class TaskOrchestrator {
   constructor({
-    registry,
-    queueDir,
-    apiKeys,
-    workingDirectory,
-    allowedOutputPrefix = ".code-analysis",
+    resolveTaskHandler,
+    queueStore,
+    taskRunner,
+    taskProgressStore,
+    taskEventPublisher,
   }) {
-    super();
+    if (typeof resolveTaskHandler !== "function") {
+      throw new Error("TaskOrchestrator requires resolveTaskHandler(task)");
+    }
+    if (!queueStore) {
+      throw new Error("TaskOrchestrator requires queueStore");
+    }
+    if (!taskRunner) {
+      throw new Error("TaskOrchestrator requires taskRunner");
+    }
+    if (!taskProgressStore) {
+      throw new Error("TaskOrchestrator requires taskProgressStore");
+    }
+    if (!taskEventPublisher) {
+      throw new Error("TaskOrchestrator requires taskEventPublisher");
+    }
 
-    this.registry = registry;
-    this.queueDir = queueDir;
-    this.workingDirectory = workingDirectory;
-    this.allowedOutputPrefix = allowedOutputPrefix;
+    this.resolveTaskHandler = resolveTaskHandler;
+    this.queueStore = queueStore;
+    this.taskRunner = taskRunner;
+    this.taskProgressStore = taskProgressStore;
+    this.taskEventPublisher = taskEventPublisher;
 
     this._runningControllers = new Map();
-
-    this._executor = new LLMApiExecutor({
-      apiKeys,
-      workingDirectory,
-      allowedOutputPrefix,
-      logsDir: `${queueDir}/logs`,
-    });
   }
 
-  // -------------------------------------------------------------------------
-  // Public query methods
-  // -------------------------------------------------------------------------
+  publishTaskEvent(eventName, payload) {
+    return this.taskEventPublisher.publish(eventName, payload);
+  }
 
   async getTask(taskId) {
-    return tasksPersistence.readTask(this.queueDir, taskId);
+    return this.queueStore.readTask(taskId);
   }
 
   async getTasks(filters = {}) {
-    return tasksPersistence.listTasks(this.queueDir, filters);
+    return this.queueStore.listTasks(filters);
   }
 
   async getPendingTasks() {
-    return tasksPersistence.listPending(this.queueDir);
+    return this.queueStore.listPending();
   }
 
-  // -------------------------------------------------------------------------
-  // Task lifecycle
-  // -------------------------------------------------------------------------
-
-  /**
-   * Enqueue a task and emit TASK_EVENTS.QUEUED.
-   * @param {Object} task - Task object to enqueue
-   * @returns {Promise<Object>} The enqueued task (with logFile stamped)
-   */
   async enqueueTask(task) {
-    await tasksPersistence.enqueueTask(this.queueDir, task);
-    this.emit(TASK_EVENTS.QUEUED, { task });
+    await this.queueStore.enqueueTask(task);
+    this.publishTaskEvent(TASK_EVENTS.QUEUED, { task });
     return task;
   }
 
-  /**
-   * Execute a task. Called by the queue processor after it claims a pending task.
-   * @param {string} taskId
-   */
   async executeTask(taskId) {
-    const task = await tasksPersistence.readTask(this.queueDir, taskId);
+    const task = await this.queueStore.readTask(taskId);
 
     if (!task) {
       return {
@@ -107,15 +83,15 @@ export class TaskOrchestrator extends EventEmitter {
     }
 
     if (task.status === TASK_STATUS.PENDING) {
-      await tasksPersistence.moveToRunning(this.queueDir, taskId);
+      await this.queueStore.moveToRunning(taskId);
     }
 
-    this.emit(TASK_EVENTS.STARTED, { task });
+    this.publishTaskEvent(TASK_EVENTS.STARTED, { task });
 
-    if (!this._executor.isAvailable()) {
+    if (!this.taskRunner.isAvailable()) {
       const error = "No LLM API keys configured";
-      await tasksPersistence.moveToFailed(this.queueDir, taskId, error);
-      this.emit(TASK_EVENTS.FAILED, {
+      await this.queueStore.moveToFailed(taskId, error);
+      this.publishTaskEvent(TASK_EVENTS.FAILED, {
         task,
         error,
         code: TASK_ERROR_CODES.NOT_FOUND,
@@ -132,36 +108,32 @@ export class TaskOrchestrator extends EventEmitter {
     this._runningControllers.set(taskId, controller);
 
     const buildHandler = (t, taskLogger, agent) => {
-      const factory = this.registry?.[t.type];
+      const factory = this.resolveTaskHandler?.(t);
       if (!factory) {
         throw new Error(`No handler registered for task type: ${t.type}`);
       }
       return factory(t, taskLogger, agent);
     };
 
-    const emitEvent = this.emit.bind(this);
+    const publishTaskEvent = this.publishTaskEvent.bind(this);
 
     let result;
     try {
-      result = await this._executor.execute(
+      result = await this.taskRunner.execute(
         task,
         buildHandler,
-        emitEvent,
+        publishTaskEvent,
         controller.signal,
       );
     } catch (error) {
       if (controller.signal.aborted) {
-        await deleteProgressFile(this.queueDir, taskId);
+        await this.taskProgressStore.clear(taskId);
         return { success: false, cancelled: true, taskId };
       }
 
       const executionError = error?.message || "Task execution failed";
-      await tasksPersistence.moveToFailed(
-        this.queueDir,
-        taskId,
-        executionError,
-      );
-      this.emit(TASK_EVENTS.FAILED, {
+      await this.queueStore.moveToFailed(taskId, executionError);
+      this.publishTaskEvent(TASK_EVENTS.FAILED, {
         task,
         error: executionError,
         code: null,
@@ -173,22 +145,18 @@ export class TaskOrchestrator extends EventEmitter {
     }
 
     if (result.success) {
-      await tasksPersistence.moveToCompleted(this.queueDir, taskId);
-      await deleteProgressFile(this.queueDir, taskId);
-      this.emit(TASK_EVENTS.COMPLETED, {
+      await this.queueStore.moveToCompleted(taskId);
+      await this.taskProgressStore.clear(taskId);
+      this.publishTaskEvent(TASK_EVENTS.COMPLETED, {
         task: { ...task, status: TASK_STATUS.COMPLETED },
         timestamp: new Date().toISOString(),
       });
     } else if (result.cancelled) {
-      await deleteProgressFile(this.queueDir, taskId);
+      await this.taskProgressStore.clear(taskId);
       return result;
     } else {
-      await tasksPersistence.moveToFailed(
-        this.queueDir,
-        taskId,
-        result.error || "Task execution failed",
-      );
-      this.emit(TASK_EVENTS.FAILED, {
+      await this.queueStore.moveToFailed(taskId, result.error || "Task execution failed");
+      this.publishTaskEvent(TASK_EVENTS.FAILED, {
         task,
         error: result.error || "Task execution failed",
         timestamp: new Date().toISOString(),
@@ -198,10 +166,6 @@ export class TaskOrchestrator extends EventEmitter {
     return result;
   }
 
-  /**
-   * Delete a task and abort any running agent for it.
-   * Cannot delete completed tasks.
-   */
   async deleteTask(taskId) {
     const controller = this._runningControllers.get(taskId);
     if (controller) {
@@ -211,13 +175,9 @@ export class TaskOrchestrator extends EventEmitter {
         component: "TaskOrchestrator",
       });
     }
-    return tasksPersistence.deleteTask(this.queueDir, taskId);
+    return this.queueStore.deleteTask(taskId);
   }
 
-  /**
-   * Cancel a task and abort any running agent for it.
-   * Moves to canceled folder, does NOT delete.
-   */
   async cancelTask(taskId) {
     const controller = this._runningControllers.get(taskId);
     if (controller) {
@@ -228,10 +188,10 @@ export class TaskOrchestrator extends EventEmitter {
       });
     }
 
-    const result = await tasksPersistence.moveToCanceled(this.queueDir, taskId);
+    const result = await this.queueStore.moveToCanceled(taskId);
     if (!result.success) return result;
 
-    this.emit(TASK_EVENTS.CANCELED, {
+    this.publishTaskEvent(TASK_EVENTS.CANCELED, {
       task: result.task,
       timestamp: new Date().toISOString(),
     });
@@ -242,11 +202,8 @@ export class TaskOrchestrator extends EventEmitter {
     return { success: true, task: result.task };
   }
 
-  /**
-   * Restart a failed, pending, or canceled task by moving it back to pending.
-   */
   async restartTask(taskId) {
-    const result = await tasksPersistence.restartTask(this.queueDir, taskId);
+    const result = await this.queueStore.restartTask(taskId);
     if (!result.success) return result;
 
     logger.info(`Task ${taskId} restarted and moved back to pending`, {
@@ -256,12 +213,9 @@ export class TaskOrchestrator extends EventEmitter {
     return { success: true, task: result.task };
   }
 
-  /**
-   * Recover orphaned tasks on server startup (running → pending).
-   */
   async recoverOrphanedTasks() {
     try {
-      const runningTasks = await tasksPersistence.listRunning(this.queueDir);
+      const runningTasks = await this.queueStore.listRunning();
       if (runningTasks.length === 0) {
         logger.info("No orphaned running tasks to recover", {
           component: "TaskOrchestrator",
@@ -277,7 +231,7 @@ export class TaskOrchestrator extends EventEmitter {
       const recoveredIds = [];
       for (const task of runningTasks) {
         try {
-          await tasksPersistence.requeueRunningTask(this.queueDir, task.id);
+          await this.queueStore.requeueRunningTask(task.id);
           logger.info(`Recovered task: ${task.id} (type: ${task.type})`, {
             component: "TaskOrchestrator",
           });

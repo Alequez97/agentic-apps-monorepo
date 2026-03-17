@@ -1,15 +1,11 @@
 import { fileURLToPath } from "url";
 import path from "path";
 import fs from "fs/promises";
-import { getProgressFileRelativePath } from "@jfs/agentic-server";
 import config from "../../config.js";
 import { TASK_TYPES } from "../../constants/task-types.js";
-import { queueMarketResearchCompetitorTask } from "../queue/market-research-competitor.js";
-import {
-  marketResearchInitialHandler,
-  marketResearchCompetitorHandler,
-  marketResearchSummaryHandler,
-} from "./market-research.js";
+import { marketResearchInitialHandler } from "./market-research-initial.js";
+import { marketResearchCompetitorHandler } from "./market-research-competitor.js";
+import { marketResearchSummaryHandler } from "./market-research-summary.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const INSTRUCTIONS_DIR = path.resolve(__dirname, "../../system-instructions");
@@ -23,11 +19,8 @@ function processTemplate(template, variables) {
   return result;
 }
 
-function buildTemplateVars(task) {
-  const progressFile = getProgressFileRelativePath(
-    task.id,
-    config.allowedOutputPrefix,
-  );
+function buildTemplateVars(task, taskProgressStore) {
+  const progressFile = taskProgressStore.getProgressLocation(task.id);
 
   switch (task.type) {
     case TASK_TYPES.MARKET_RESEARCH_INITIAL:
@@ -64,13 +57,17 @@ function buildTemplateVars(task) {
   }
 }
 
-async function loadSystemInstruction(filename, task) {
+async function loadSystemInstruction(filename, task, taskProgressStore) {
   const filePath = path.join(INSTRUCTIONS_DIR, filename);
   const raw = await fs.readFile(filePath, "utf-8");
-  return processTemplate(raw, buildTemplateVars(task));
+  return processTemplate(raw, buildTemplateVars(task, taskProgressStore));
 }
 
-export function createRegistry(orchestrator) {
+export function createTaskHandlersByType({
+  taskProgressStore,
+  taskScheduler,
+  taskEventPublisher,
+}) {
   return {
     [TASK_TYPES.MARKET_RESEARCH_INITIAL]: async (task, taskLogger, agent) => {
       agent.fileToolExecutor.setAllowAnyWrite(true);
@@ -78,8 +75,8 @@ export function createRegistry(orchestrator) {
       agent.enableDelegationTools(
         task.id,
         {
-          "market-research-competitor": (params) =>
-            queueMarketResearchCompetitorTask(orchestrator, {
+          [TASK_TYPES.MARKET_RESEARCH_COMPETITOR]: (params) =>
+            taskScheduler.queueMarketResearchCompetitorTask({
               ...params,
               delegatedByTaskId: task.id,
             }),
@@ -95,11 +92,14 @@ export function createRegistry(orchestrator) {
       const systemPrompt = await loadSystemInstruction(
         task.systemInstructionFile,
         task,
+        taskProgressStore,
       );
 
       return {
         systemPrompt,
-        ...marketResearchInitialHandler(task, taskLogger, agent, orchestrator),
+        ...marketResearchInitialHandler(task, taskLogger, agent, {
+          taskScheduler,
+        }),
       };
     },
 
@@ -118,16 +118,14 @@ export function createRegistry(orchestrator) {
       const systemPrompt = await loadSystemInstruction(
         task.systemInstructionFile,
         task,
+        taskProgressStore,
       );
 
       return {
         systemPrompt,
-        ...marketResearchCompetitorHandler(
-          task,
-          taskLogger,
-          agent,
-          orchestrator,
-        ),
+        ...marketResearchCompetitorHandler(task, taskLogger, agent, {
+          taskEventPublisher,
+        }),
       };
     },
 
@@ -137,16 +135,14 @@ export function createRegistry(orchestrator) {
       const systemPrompt = await loadSystemInstruction(
         task.systemInstructionFile,
         task,
+        taskProgressStore,
       );
 
       return {
         systemPrompt,
-        ...(await marketResearchSummaryHandler(
-          task,
-          taskLogger,
-          agent,
-          orchestrator,
-        )),
+        ...(await marketResearchSummaryHandler(task, taskLogger, agent, {
+          taskEventPublisher,
+        })),
       };
     },
   };

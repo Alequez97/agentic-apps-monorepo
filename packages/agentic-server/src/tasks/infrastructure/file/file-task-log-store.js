@@ -1,10 +1,6 @@
 import fs from "fs/promises";
 import path from "path";
 
-/**
- * Safely resolve a relative log file path within `queueDir`.
- * Returns null if the path is invalid (traversal attempt, absolute, etc.).
- */
 function resolveLogPath(queueDir, relativeLogFile) {
   if (typeof relativeLogFile !== "string" || !relativeLogFile.trim()) {
     return null;
@@ -28,13 +24,7 @@ function resolveLogPath(queueDir, relativeLogFile) {
   return { normalized, absolute };
 }
 
-/**
- * Read a log file.
- * @param {string} queueDir - The analysis root directory (same as used by tasks persistence)
- * @param {string} relativeLogFile - Relative path to the log file (e.g. "logs/task-id.log")
- * @returns {Promise<{ content: string, logFile: string }>}
- */
-export async function readLog(queueDir, relativeLogFile) {
+async function readLog(queueDir, relativeLogFile) {
   const resolved = resolveLogPath(queueDir, relativeLogFile);
   if (!resolved) {
     const err = new Error(`Invalid log file path: ${relativeLogFile}`);
@@ -56,3 +46,11 @@ export async function readLog(queueDir, relativeLogFile) {
     throw error;
   }
 }
+
+export function createFileTaskLogStore({ queueDir }) {
+  return {
+    readLog: (relativeLogFile) => readLog(queueDir, relativeLogFile),
+  };
+}
+
+export { readLog };

@@ -1,16 +1,14 @@
 import config from "../../config.js";
 import { TASK_TYPES } from "../../constants/task-types.js";
-import {
-  TASK_STATUS,
-  getProgressFileRelativePath,
-  ensureProgressDirectory,
-} from "@jfs/agentic-server";
+import { TASK_STATUS } from "@jfs/agentic-server";
 import * as logger from "../../utils/logger.js";
 import { generateTaskId } from "../utils.js";
 
 /**
  * Queue a market research initial task.
- * @param {import("@jfs/agentic-server").TaskOrchestrator} orchestrator
+ * @param {Object} deps
+ * @param {Object} deps.queueStore
+ * @param {Object} deps.taskProgressStore
  * @param {Object} params
  * @param {string} params.sessionId
  * @param {string} params.idea
@@ -19,7 +17,7 @@ import { generateTaskId } from "../utils.js";
  * @returns {Promise<Object>} The created task, or { success: false, error, code }
  */
 export async function queueMarketResearchInitialTask(
-  orchestrator,
+  { queueStore, taskProgressStore },
   { sessionId, idea, numCompetitors, regions } = {},
 ) {
   if (!sessionId || !idea) {
@@ -35,10 +33,7 @@ export async function queueMarketResearchInitialTask(
   }
 
   const taskId = generateTaskId(TASK_TYPES.MARKET_RESEARCH_INITIAL);
-  const progressFile = getProgressFileRelativePath(
-    taskId,
-    config.allowedOutputPrefix,
-  );
+  const progressFile = taskProgressStore.getProgressLocation(taskId);
 
   const task = {
     id: taskId,
@@ -63,8 +58,8 @@ export async function queueMarketResearchInitialTask(
     progressFile,
   };
 
-  await ensureProgressDirectory(config.queueDir, taskId);
-  await orchestrator.enqueueTask(task);
+  await taskProgressStore.initialize(taskId);
+  await queueStore.enqueueTask(task);
 
   logger.info("Queued market research initial task", {
     component: "MarketResearchInitialQueue",

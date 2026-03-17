@@ -1,4 +1,5 @@
 import "dotenv/config";
+import { EventEmitter } from "events";
 import express from "express";
 import { createServer } from "http";
 import { Server } from "socket.io";
@@ -7,10 +8,17 @@ import cookieParser from "cookie-parser";
 import {
   TaskOrchestrator,
   createQueueProcessor,
+  createFileQueueStore,
+  createFileTaskProgressStore,
+  LLMTaskRunner,
   TASK_EVENTS,
 } from "@jfs/agentic-server";
 import config from "./config.js";
-import { createRegistry } from "./tasks/handlers/index.js";
+import { APP_EVENTS } from "./constants/app-events.js";
+import { createTaskHandlersByType } from "./tasks/handlers/index.js";
+import { queueMarketResearchCompetitorTask } from "./tasks/queue/market-research-competitor.js";
+import { queueMarketResearchInitialTask } from "./tasks/queue/market-research-initial.js";
+import { queueMarketResearchSummaryTask } from "./tasks/queue/market-research-summary.js";
 import { createMarketResearchRouter } from "./routes/market-research.js";
 import authRouter from "./routes/auth.js";
 import { startCleanupJob } from "./utils/market-research-cleanup.js";
@@ -37,18 +45,54 @@ const io = new Server(httpServer, {
 
 // ==================== Orchestrator ====================
 
-const orchestrator = new TaskOrchestrator({
-  registry: null, // set below after createRegistry
+const queueStore = createFileQueueStore({
   queueDir: config.queueDir,
+});
+
+const taskEvents = new EventEmitter();
+const taskEventPublisher = {
+  publish: (eventName, payload) => taskEvents.emit(eventName, payload),
+};
+
+const taskProgressStore = createFileTaskProgressStore({
+  queueDir: config.queueDir,
+  outputPrefix: config.allowedOutputPrefix,
+});
+
+const taskRunner = new LLMTaskRunner({
   apiKeys: config.apiKeys,
   workingDirectory: config.workingDirectory,
   allowedOutputPrefix: config.allowedOutputPrefix,
+  logsDir: `${config.queueDir}/logs`,
 });
 
-const registry = createRegistry(orchestrator);
-orchestrator.registry = registry;
+const taskQueue = {
+  queueMarketResearchInitialTask: (params) =>
+    queueMarketResearchInitialTask({ queueStore, taskProgressStore }, params),
+  queueMarketResearchCompetitorTask: (params) =>
+    queueMarketResearchCompetitorTask({ queueStore, taskProgressStore }, params),
+  queueMarketResearchSummaryTask: (params) =>
+    queueMarketResearchSummaryTask({ queueStore, taskProgressStore }, params),
+};
 
-const queueProcessor = createQueueProcessor(orchestrator);
+const taskHandlersByType = createTaskHandlersByType({
+  taskProgressStore,
+  taskScheduler: taskQueue,
+  taskEventPublisher,
+});
+
+const orchestrator = new TaskOrchestrator({
+  resolveTaskHandler: (task) => taskHandlersByType[task.type],
+  queueStore,
+  taskRunner,
+  taskProgressStore,
+  taskEventPublisher,
+});
+
+const queueProcessor = createQueueProcessor({
+  queueStore,
+  taskOrchestrator: orchestrator,
+});
 
 // ==================== Socket.IO bridge ====================
 
@@ -61,7 +105,7 @@ const LOG_EVENT_MAP = {
     SOCKET_EVENTS.LOG_MARKET_RESEARCH_SUMMARY,
 };
 
-orchestrator.on(TASK_EVENTS.QUEUED, ({ task }) => {
+taskEvents.on(TASK_EVENTS.QUEUED, ({ task }) => {
   io.emit(SOCKET_EVENTS.TASK_QUEUED, {
     taskId: task.id,
     type: task.type,
@@ -90,7 +134,7 @@ orchestrator.on(TASK_EVENTS.QUEUED, ({ task }) => {
   }
 });
 
-orchestrator.on(TASK_EVENTS.STARTED, ({ task }) => {
+taskEvents.on(TASK_EVENTS.STARTED, ({ task }) => {
   io.emit(SOCKET_EVENTS.TASK_STARTED, {
     taskId: task.id,
     type: task.type,
@@ -98,7 +142,7 @@ orchestrator.on(TASK_EVENTS.STARTED, ({ task }) => {
   });
 });
 
-orchestrator.on(TASK_EVENTS.PROGRESS, (data) => {
+taskEvents.on(TASK_EVENTS.PROGRESS, (data) => {
   io.emit(SOCKET_EVENTS.TASK_PROGRESS, {
     taskId: data.taskId,
     type: data.type,
@@ -121,7 +165,7 @@ orchestrator.on(TASK_EVENTS.PROGRESS, (data) => {
   }
 });
 
-orchestrator.on(TASK_EVENTS.COMPLETED, ({ task }) => {
+taskEvents.on(TASK_EVENTS.COMPLETED, ({ task }) => {
   io.emit(SOCKET_EVENTS.TASK_COMPLETED, {
     taskId: task.id,
     type: task.type,
@@ -130,7 +174,7 @@ orchestrator.on(TASK_EVENTS.COMPLETED, ({ task }) => {
   });
 });
 
-orchestrator.on(TASK_EVENTS.FAILED, ({ task, error }) => {
+taskEvents.on(TASK_EVENTS.FAILED, ({ task, error }) => {
   io.emit(SOCKET_EVENTS.TASK_FAILED, {
     taskId: task.id,
     type: task.type,
@@ -140,7 +184,7 @@ orchestrator.on(TASK_EVENTS.FAILED, ({ task, error }) => {
   });
 });
 
-orchestrator.on(TASK_EVENTS.CANCELED, ({ task }) => {
+taskEvents.on(TASK_EVENTS.CANCELED, ({ task }) => {
   io.emit(SOCKET_EVENTS.TASK_CANCELED, {
     taskId: task.id,
     type: task.type,
@@ -150,11 +194,11 @@ orchestrator.on(TASK_EVENTS.CANCELED, ({ task }) => {
 });
 
 // Bridge market-research lifecycle events emitted by handlers
-orchestrator.on(SOCKET_EVENTS.MARKET_RESEARCH_REPORT_READY, (data) => {
+taskEvents.on(APP_EVENTS.MARKET_RESEARCH_REPORT_READY, (data) => {
   io.emit(SOCKET_EVENTS.MARKET_RESEARCH_REPORT_READY, data);
 });
 
-orchestrator.on(SOCKET_EVENTS.MARKET_RESEARCH_COMPETITOR_UPDATED, (data) => {
+taskEvents.on(APP_EVENTS.MARKET_RESEARCH_COMPETITOR_UPDATED, (data) => {
   io.emit(SOCKET_EVENTS.MARKET_RESEARCH_COMPETITOR_UPDATED, data);
 });
 
@@ -184,7 +228,7 @@ app.use((req, res, next) => {
 
 // ==================== Routes ====================
 
-app.use("/api/market-research", createMarketResearchRouter(orchestrator));
+app.use("/api/market-research", createMarketResearchRouter({ taskQueue }));
 app.use("/api/auth", authRouter);
 
 app.get("/api/tasks", async (req, res) => {
