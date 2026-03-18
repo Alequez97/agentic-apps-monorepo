@@ -1,3 +1,5 @@
+import { ANALYSIS_STATUS } from "../constants";
+
 export const BG = "#f8fafc";
 export const CARD_BG = "#ffffff";
 export const BORDER = "#e2e8f0";
@@ -18,9 +20,10 @@ export function fmtDate(ts) {
 }
 
 export function getStatusTone(status) {
-  if (status === "complete") return "green";
-  if (status === "failed" || status === "validation_failed") return "red";
-  if (status === "analyzing") return "blue";
+  if (status === ANALYSIS_STATUS.COMPLETE) return "green";
+  if (status === ANALYSIS_STATUS.FAILED || status === ANALYSIS_STATUS.VALIDATION_FAILED)
+    return "red";
+  if (status === ANALYSIS_STATUS.ANALYZING) return "blue";
   return "gray";
 }
 

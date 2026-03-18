@@ -2,15 +2,13 @@ import { create } from "zustand";
 import { io } from "socket.io-client";
 import { SOCKET_EVENTS } from "../constants/socket-events";
 import { TASK_TYPES } from "../constants/task-types";
-import {
-  useMarketResearchStore,
-  logLineToKind,
-} from "./useMarketResearchStore";
+import { useMarketResearchStore, logLineToKind } from "./useMarketResearchStore";
 import { useProfileStore } from "./useProfileStore";
 import { useTaskProgressStore } from "./useTaskProgressStore";
 import { getMarketResearchReport } from "../api/market-research";
 import { SOCKET_ORIGIN, SOCKET_PATH } from "../config/runtime";
 import { useAuthStore } from "./useAuthStore";
+import { ANALYSIS_STATUS, COMPETITOR_STATUS } from "../components/market-research/constants";
 
 export const useSocketStore = create((set, get) => ({
   socket: null,
@@ -90,16 +88,14 @@ export const useSocketStore = create((set, get) => ({
       const { type, taskId, domainId } = data;
 
       if (taskId) {
-        useTaskProgressStore
-          .getState()
-          .setCompleted({ id: taskId, type, domainId });
+        useTaskProgressStore.getState().setCompleted({ id: taskId, type, domainId });
       }
 
       if (type === TASK_TYPES.MARKET_RESEARCH_COMPETITOR) {
         const mrStore = useMarketResearchStore.getState();
         const competitorId = mrStore.competitorTaskMap[taskId];
         if (competitorId) {
-          mrStore._updateCompetitorStatus(competitorId, "done");
+          mrStore._updateCompetitorStatus(competitorId, COMPETITOR_STATUS.DONE);
           mrStore._syncSummaryStatus();
         }
       } else if (type === TASK_TYPES.MARKET_RESEARCH_INITIAL) {
@@ -119,9 +115,8 @@ export const useSocketStore = create((set, get) => ({
             idea,
             completedAt: Date.now(),
             updatedAt: Date.now(),
-            competitorCount:
-              useMarketResearchStore.getState().competitors.length,
-            status: "complete",
+            competitorCount: useMarketResearchStore.getState().competitors.length,
+            status: ANALYSIS_STATUS.COMPLETE,
           });
         }
 
@@ -132,7 +127,10 @@ export const useSocketStore = create((set, get) => ({
               const report = response?.data?.report;
               const status = response?.data?.status;
               useAuthStore.getState().updateUserCredits(response?.data?.subscription ?? null);
-              if (report && (status === "complete" || status === "completed")) {
+              if (
+                report &&
+                (status === ANALYSIS_STATUS.COMPLETE || status === ANALYSIS_STATUS.COMPLETED)
+              ) {
                 useMarketResearchStore.getState()._applyReport(report);
               } else {
                 useMarketResearchStore.getState()._markAnalysisFailed();
@@ -151,9 +149,7 @@ export const useSocketStore = create((set, get) => ({
       const idea = data?.params?.idea;
 
       if (taskId) {
-        useTaskProgressStore
-          .getState()
-          .setFailed({ id: taskId, type, domainId, error });
+        useTaskProgressStore.getState().setFailed({ id: taskId, type, domainId, error });
       }
 
       if (
@@ -197,9 +193,7 @@ export const useSocketStore = create((set, get) => ({
       const reportId = data?.params?.sessionId;
       const idea = data?.params?.idea;
       if (taskId) {
-        useTaskProgressStore
-          .getState()
-          .setCanceled({ id: taskId, type, domainId });
+        useTaskProgressStore.getState().setCanceled({ id: taskId, type, domainId });
       }
 
       if (
@@ -216,7 +210,7 @@ export const useSocketStore = create((set, get) => ({
           completedAt: Date.now(),
           updatedAt: Date.now(),
           competitorCount: useMarketResearchStore.getState().competitors.length,
-          status: "canceled",
+          status: ANALYSIS_STATUS.CANCELED,
         });
       }
 
@@ -229,8 +223,7 @@ export const useSocketStore = create((set, get) => ({
     // ── Market research lifecycle events ─────────────────────────────────
 
     socket.on(SOCKET_EVENTS.MARKET_RESEARCH_COMPETITOR_FOUND, (data) => {
-      const { sessionId: reportId, taskId, competitorId, competitorName, competitorUrl } =
-        data;
+      const { sessionId: reportId, taskId, competitorId, competitorName, competitorUrl } = data;
       const storeReportId = useMarketResearchStore.getState().reportId;
       if (reportId && reportId === storeReportId) {
         const mrStore = useMarketResearchStore.getState();
@@ -264,7 +257,10 @@ export const useSocketStore = create((set, get) => ({
           const report = response?.data?.report;
           const status = response?.data?.status;
           useAuthStore.getState().updateUserCredits(response?.data?.subscription ?? null);
-          if (report && (status === "complete" || status === "completed")) {
+          if (
+            report &&
+            (status === ANALYSIS_STATUS.COMPLETE || status === ANALYSIS_STATUS.COMPLETED)
+          ) {
             useMarketResearchStore.getState()._applyReport(report);
           } else {
             useMarketResearchStore.getState()._markAnalysisFailed();

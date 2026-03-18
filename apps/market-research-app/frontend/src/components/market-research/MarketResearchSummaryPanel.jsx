@@ -49,7 +49,7 @@ export function MarketResearchSummaryPanel() {
   const isAnalysisComplete = useMarketResearchStore((s) => s.isAnalysisComplete);
   const navigate = useNavigate();
 
-  if (summaryStatus === "idle" && !isAnalysisComplete) {
+  if (summaryStatus === SUMMARY_STATUS.IDLE && !isAnalysisComplete) {
     return null;
   }
 
@@ -63,8 +63,8 @@ export function MarketResearchSummaryPanel() {
       borderColor="#e2e8f0"
       pt={5}
       px={5}
-      pb={summaryStatus === "ready" ? 4 : 5}
-      minH={summaryStatus === "ready" ? undefined : "242px"}
+      pb={summaryStatus === SUMMARY_STATUS.READY ? 4 : 5}
+      minH={summaryStatus === SUMMARY_STATUS.READY ? undefined : "242px"}
     >
       <HStack justify="space-between" align="start" mb={4}>
         <VStack align="start" gap={1}>
@@ -89,28 +89,32 @@ export function MarketResearchSummaryPanel() {
           py={1}
           borderRadius="9999px"
           bg={
-            summaryStatus === "ready"
+            summaryStatus === SUMMARY_STATUS.READY
               ? "#dcfce7"
-              : summaryStatus === "failed"
+              : summaryStatus === SUMMARY_STATUS.FAILED
                 ? "#fee2e2"
                 : "#eef2ff"
           }
           color={
-            summaryStatus === "ready"
+            summaryStatus === SUMMARY_STATUS.READY
               ? "#166534"
-              : summaryStatus === "failed"
+              : summaryStatus === SUMMARY_STATUS.FAILED
                 ? "#b91c1c"
                 : "#4f46e5"
           }
           fontSize="11px"
           fontWeight="700"
         >
-          {summaryStatus === "ready" ? "Ready" : summaryStatus === "failed" ? "Failed" : "Loading"}
+          {summaryStatus === SUMMARY_STATUS.READY
+            ? "Ready"
+            : summaryStatus === SUMMARY_STATUS.FAILED
+              ? "Failed"
+              : "Loading"}
         </Box>
       </HStack>
 
       <VStack align="stretch" gap={4}>
-        {summaryStatus === "ready" ? (
+        {summaryStatus === SUMMARY_STATUS.READY ? (
           <Button
             w="full"
             display="flex"

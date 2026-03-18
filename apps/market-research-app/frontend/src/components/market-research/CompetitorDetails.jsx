@@ -9,6 +9,7 @@ import { CompetitorPricingPlans } from "./CompetitorPricingPlans";
 import { CompetitorStrengthsWeaknesses } from "./CompetitorStrengthsWeaknesses";
 import { CompetitorCompanyInfo } from "./CompetitorCompanyInfo";
 import { CompetitorSourcesCard } from "./CompetitorSourcesCard";
+import { COMPETITOR_STATUS } from "./constants";
 
 function StatCard({ label, value }) {
   return (
@@ -41,7 +42,7 @@ export function CompetitorDetails({ competitor, onBack }) {
   const { details } = competitor;
 
   useEffect(() => {
-    if (!details && !competitor.loadFailed && competitor.status !== "analyzing") {
+    if (!details && !competitor.loadFailed && competitor.status !== COMPETITOR_STATUS.ANALYZING) {
       loadCompetitorDetails(competitor.id);
     }
   }, [competitor.id, details, competitor.loadFailed, competitor.status, loadCompetitorDetails]);
@@ -108,7 +109,9 @@ export function CompetitorDetails({ competitor, onBack }) {
           >
             Retry Analysis
           </Button>
-        </Bo
+        </Box>
+      </VStack>
+    );
   }
 
   if (!details) {
@@ -128,11 +131,11 @@ export function CompetitorDetails({ competitor, onBack }) {
         >
           <Spinner size="sm" color="#6366f1" />
           <Text fontSize="13px" color="#64748b">
-            Loading {competitor.name} profile…
-          </Text>
-        </Bo{competitor.status === "analyzing"
+            {competitor.status === COMPETITOR_STATUS.ANALYZING
               ? `Analyzing ${competitor.name}…`
               : `Loading ${competitor.name} profile…`}
+          </Text>
+        </Box>
       </VStack>
     );
   }

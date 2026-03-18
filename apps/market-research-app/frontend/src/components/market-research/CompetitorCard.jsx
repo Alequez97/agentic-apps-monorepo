@@ -156,8 +156,8 @@ function CompetitorCardQueued({ competitor }) {
 }
 
 export function CompetitorCard({ competitor }) {
-  const isAnalyzing = competitor.status === "analyzing";
-  const isDone = competitor.status === "done";
+  const isAnalyzing = competitor.status === COMPETITOR_STATUS.ANALYZING;
+  const isDone = competitor.status === COMPETITOR_STATUS.DONE;
   const selectCompetitor = useMarketResearchStore((s) => s.selectCompetitor);
 
   return (
@@ -185,9 +185,7 @@ export function CompetitorCard({ competitor }) {
     >
       {isDone && <CompetitorCardDone competitor={competitor} />}
       {isAnalyzing && <CompetitorCardAnalyzing competitor={competitor} />}
-      {!isDone && !isAnalyzing && (
-        <CompetitorCardQueued competitor={competitor} />
-      )}
+      {!isDone && !isAnalyzing && <CompetitorCardQueued competitor={competitor} />}
     </Box>
   );
 }

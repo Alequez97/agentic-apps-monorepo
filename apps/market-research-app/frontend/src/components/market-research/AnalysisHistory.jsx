@@ -9,6 +9,7 @@ import {
   RefreshCcw,
   Search,
 } from "lucide-react";
+import { ANALYSIS_STATUS, CANCELED_STAGE, STATUS_STYLES } from "./constants";
 
 function formatDate(ts) {
   return new Date(ts).toLocaleDateString("en-US", {
@@ -26,54 +27,23 @@ function formatTime(ts) {
 }
 
 function getStatusStyle(status) {
-  if (status === "failed") {
-    return {
-      bg: "rgba(239,68,68,0.08)",
-      borderColor: "rgba(239,68,68,0.25)",
-      dot: "#dc2626",
-      color: "#b91c1c",
-      label: "Failed",
-    };
-  }
-
-  if (status === "analyzing") {
-    return {
-      bg: "#eef2ff",
-      borderColor: "#c7d2fe",
-      dot: "#6366f1",
-      color: "#4f46e5",
-      label: "Running",
-    };
-  }
-
-  if (status === "canceled") {
-    return {
-      bg: "#f8fafc",
-      borderColor: "#e2e8f0",
-      dot: "#64748b",
-      color: "#475569",
-      label: "Canceled",
-    };
-  }
-
-  return {
-    bg: "rgba(22,163,74,0.08)",
-    borderColor: "rgba(22,163,74,0.25)",
-    dot: "#16a34a",
-    color: "#15803d",
-    label: "Complete",
-  };
+  return STATUS_STYLES[status] || STATUS_STYLES[ANALYSIS_STATUS.COMPLETE];
 }
 
 function HistoryRow({ entry, isLast, onOpen, onRestart, onDelete, isDeleting }) {
   const statusStyle = getStatusStyle(entry.status);
-  const canRestart = entry.status === "failed" || entry.status === "canceled";
+  const canRestart =
+    entry.status === ANALYSIS_STATUS.FAILED ||
+    entry.status === ANALYSIS_STATUS.CANCELED ||
+    entry.status === ANALYSIS_STATUS.VALIDATION_FAILED;
   const restartLabel =
-    entry.status === "canceled" && entry.restartCreditCost === 1 ? "Resume - 1 credit" : "Restart";
+    entry.status === ANALYSIS_STATUS.CANCELED && entry.restartCreditCost === 1
+      ? "Resume - 1 credit"
+      : "Restart";
   const canceledStageCopy =
-    entry.canceledAtStage === "summary"
+    entry.canceledAtStage === CANCELED_STAGE.SUMMARY
       ? "Resume will continue from the summary step and charge 1 credit."
-      : entry.canceledAtStage === "competitors"
+      : entry.canceledAtStage === CANCELED_STAGE.COMPETITORS
         ? "Resume will continue the missing competitor work and final summary for 1 credit."
         : null;
 
@@ -174,7 +144,7 @@ function HistoryRow({ entry, isLast, onOpen, onRestart, onDelete, isDeleting }) 
                 </Button>
               )}
             </HStack>
-            {entry.status === "canceled" && canceledStageCopy ? (
+            {entry.status === ANALYSIS_STATUS.CANCELED && canceledStageCopy ? (
               <Text fontSize="11px" color="#64748b">
                 {canceledStageCopy}
               </Text>

@@ -11,6 +11,88 @@ import {
   Users,
 } from "lucide-react";
 
+// Analysis status constants
+export const ANALYSIS_STATUS = {
+  COMPLETE: "complete",
+  COMPLETED: "completed", // Backend sometimes uses this variant
+  FAILED: "failed",
+  VALIDATION_FAILED: "validation_failed",
+  ANALYZING: "analyzing",
+  CANCELED: "canceled",
+};
+
+export const CANCELED_STAGE = {
+  SUMMARY: "summary",
+  COMPETITORS: "competitors",
+};
+
+// Task status constants (for individual background tasks)
+export const TASK_STATUS = {
+  PENDING: "pending",
+  RUNNING: "running",
+  COMPLETED: "completed",
+  FAILED: "failed",
+  CANCELED: "canceled",
+  RETRYING: "retrying",
+};
+
+// Competitor status constants
+export const COMPETITOR_STATUS = {
+  QUEUED: "queued",
+  ANALYZING: "analyzing",
+  DONE: "done",
+  FAILED: "failed",
+};
+
+// Summary status constants
+export const SUMMARY_STATUS = {
+  IDLE: "idle",
+  FINDING_COMPETITORS: "finding-competitors",
+  WAITING_COMPETITORS: "waiting-competitors",
+  SUMMARIZING: "summarizing",
+  READY: "ready",
+  FAILED: "failed",
+};
+
+// Status styling configurations
+export const STATUS_STYLES = {
+  [ANALYSIS_STATUS.FAILED]: {
+    bg: "rgba(239,68,68,0.08)",
+    borderColor: "rgba(239,68,68,0.25)",
+    dot: "#dc2626",
+    color: "#b91c1c",
+    label: "Failed",
+  },
+  [ANALYSIS_STATUS.VALIDATION_FAILED]: {
+    bg: "rgba(234,179,8,0.08)",
+    borderColor: "rgba(234,179,8,0.25)",
+    dot: "#ca8a04",
+    color: "#a16207",
+    label: "Rejected",
+  },
+  [ANALYSIS_STATUS.ANALYZING]: {
+    bg: "#eef2ff",
+    borderColor: "#c7d2fe",
+    dot: "#6366f1",
+    color: "#4f46e5",
+    label: "Running",
+  },
+  [ANALYSIS_STATUS.CANCELED]: {
+    bg: "#f8fafc",
+    borderColor: "#e2e8f0",
+    dot: "#64748b",
+    color: "#475569",
+    label: "Canceled",
+  },
+  [ANALYSIS_STATUS.COMPLETE]: {
+    bg: "rgba(22,163,74,0.08)",
+    borderColor: "rgba(22,163,74,0.25)",
+    dot: "#16a34a",
+    color: "#15803d",
+    label: "Complete",
+  },
+};
+
 export const COUNTRIES = [
   // North America
   { code: "US", name: "United States" },
@@ -301,15 +383,7 @@ export const MOCK_COMPETITORS = [
         },
         {
           category: "Integrations",
-          items: [
-            "GitHub",
-            "GitLab",
-            "Bitbucket",
-            "Jenkins",
-            "CircleCI",
-            "VS Code",
-            "IntelliJ",
-          ],
+          items: ["GitHub", "GitLab", "Bitbucket", "Jenkins", "CircleCI", "VS Code", "IntelliJ"],
         },
         {
           category: "Developer Experience",
@@ -408,8 +482,7 @@ export const MOCK_COMPETITORS = [
       funding: "$412M (SonarSource)",
       employees: "~400",
       business: "B2B SaaS + On-Prem — Enterprise focus",
-      targetMarket:
-        "Enterprise engineering teams, large orgs with compliance requirements",
+      targetMarket: "Enterprise engineering teams, large orgs with compliance requirements",
       features: [
         {
           category: "Code Analysis",
@@ -526,8 +599,7 @@ export const MOCK_COMPETITORS = [
       funding: "Acquired by Code Climate, Inc.",
       employees: "~50",
       business: "B2B SaaS — SMB + OSS",
-      targetMarket:
-        "Engineering teams tracking code health over time, OSS maintainers",
+      targetMarket: "Engineering teams tracking code health over time, OSS maintainers",
       features: [
         {
           category: "Code Quality",
@@ -636,8 +708,7 @@ export const MOCK_COMPETITORS = [
       funding: "$12M Series A",
       employees: "~100",
       business: "B2B SaaS — SMB + startup focus",
-      targetMarket:
-        "Fast-moving dev teams wanting continuous automated code review",
+      targetMarket: "Fast-moving dev teams wanting continuous automated code review",
       features: [
         {
           category: "Code Analysis",
@@ -747,8 +818,7 @@ export const MOCK_COMPETITORS = [
       funding: "N/A — part of Microsoft",
       employees: "N/A (GitHub ~3,000+)",
       business: "Platform feature — bundled with GitHub Enterprise",
-      targetMarket:
-        "Engineering teams already on GitHub, especially those in regulated industries",
+      targetMarket: "Engineering teams already on GitHub, especially those in regulated industries",
       features: [
         {
           category: "Code Scanning",
@@ -858,8 +928,7 @@ export const MOCK_COMPETITORS = [
       funding: "Bootstrapped — profitable",
       employees: "~60",
       business: "B2B SaaS — Enterprise focus",
-      targetMarket:
-        "Engineering leaders and CTOs managing large legacy codebases",
+      targetMarket: "Engineering leaders and CTOs managing large legacy codebases",
       features: [
         {
           category: "Behavioral Analysis",
@@ -972,8 +1041,7 @@ export const MOCK_COMPETITORS = [
       funding: "Bootstrapped — JetBrains internal",
       employees: "~20 (Qodana team)",
       business: "B2B SaaS + self-hosted — extension of JetBrains ecosystem",
-      targetMarket:
-        "JetBrains IDE users wanting CI parity, Java/Kotlin/JVM teams",
+      targetMarket: "JetBrains IDE users wanting CI parity, Java/Kotlin/JVM teams",
       features: [
         {
           category: "Code Inspections",
@@ -1229,8 +1297,7 @@ export const SIMULATION_EVENTS = [
       agent: "SNYK AGENT",
       agentColor: "#ef4444",
       message: "Extract pricing",
-      detail:
-        "Free — Team $25/dev/mo — Business $82/dev/mo — Enterprise custom",
+      detail: "Free — Team $25/dev/mo — Business $82/dev/mo — Enterprise custom",
     },
   },
   {
@@ -1303,8 +1370,7 @@ export const SIMULATION_EVENTS = [
       agent: "DEEPSOURCE AGENT",
       agentColor: "#0891b2",
       message: "Extract navigation",
-      detail:
-        "Found links: /autofix, /pricing, /docs, /blog/comparing-static-analysis",
+      detail: "Found links: /autofix, /pricing, /docs, /blog/comparing-static-analysis",
     },
   },
   {
@@ -1315,8 +1381,7 @@ export const SIMULATION_EVENTS = [
       agent: "GHAS AGENT",
       agentColor: "#1f2937",
       message: "Extract features",
-      detail:
-        "Code scanning, secret scanning, Dependabot alerts — native GitHub integration",
+      detail: "Code scanning, secret scanning, Dependabot alerts — native GitHub integration",
     },
   },
   {
@@ -1360,8 +1425,7 @@ export const SIMULATION_EVENTS = [
       agent: "GHAS AGENT",
       agentColor: "#1f2937",
       message: "Extract pricing",
-      detail:
-        "Included with GitHub Advanced — Enterprise $21/user/mo additional",
+      detail: "Included with GitHub Advanced — Enterprise $21/user/mo additional",
     },
   },
   { delay: 7000, type: "competitor_status", id: "deepsource", status: "done" },
@@ -1406,8 +1470,7 @@ export const SIMULATION_EVENTS = [
       agent: "CODESCENE AGENT",
       agentColor: "#7c3aed",
       message: "Extract features",
-      detail:
-        "Behavioral code analysis, tech debt visualization, refactoring targets",
+      detail: "Behavioral code analysis, tech debt visualization, refactoring targets",
     },
   },
   {
@@ -1418,8 +1481,7 @@ export const SIMULATION_EVENTS = [
       agent: "QODANA AGENT",
       agentColor: "#db2777",
       message: "Extract features",
-      detail:
-        "40+ JetBrains code inspections, CI/CD integration, team quality profiles",
+      detail: "40+ JetBrains code inspections, CI/CD integration, team quality profiles",
     },
   },
   {
@@ -1463,8 +1525,7 @@ export const SIMULATION_EVENTS = [
       agent: "QODANA AGENT",
       agentColor: "#db2777",
       message: "Extract pricing",
-      detail:
-        "Free (community) — IDE plan $249/dev/yr — All products $779/dev/yr",
+      detail: "Free (community) — IDE plan $249/dev/yr — All products $779/dev/yr",
     },
   },
   {
@@ -1500,8 +1561,7 @@ export const MOCK_SUMMARY = {
         },
         {
           label: "Test generation",
-          detail:
-            "Completely unserved; high demand based on GitHub Copilot adoption",
+          detail: "Completely unserved; high demand based on GitHub Copilot adoption",
         },
         {
           label: "Pricing flexibility",
@@ -1525,18 +1585,15 @@ export const MOCK_SUMMARY = {
         },
         {
           label: "Sales cycle",
-          detail:
-            "Enterprise DevOps tooling has long sales cycles (6–12 months)",
+          detail: "Enterprise DevOps tooling has long sales cycles (6–12 months)",
         },
         {
           label: "Integration overhead",
-          detail:
-            "Must support GitHub, GitLab, Bitbucket, Jenkins, CircleCI, etc.",
+          detail: "Must support GitHub, GitLab, Bitbucket, Jenkins, CircleCI, etc.",
         },
         {
           label: "AI accuracy",
-          detail:
-            "Low-quality fixes will kill adoption — quality bar is very high",
+          detail: "Low-quality fixes will kill adoption — quality bar is very high",
         },
         {
           label: "GitHub Copilot",
@@ -1588,8 +1645,7 @@ export const MOCK_SUMMARY = {
         },
         {
           label: "Team ($99/mo)",
-          detail:
-            "Unlimited LOC, 50 repos, Slack integration, priority support",
+          detail: "Unlimited LOC, 50 repos, Slack integration, priority support",
         },
         {
           label: "Enterprise (custom)",
@@ -1597,8 +1653,7 @@ export const MOCK_SUMMARY = {
         },
         {
           label: "Usage-based add-on",
-          detail:
-            "$0.001/LOC scanned beyond plan limits (transparent, predictable)",
+          detail: "$0.001/LOC scanned beyond plan limits (transparent, predictable)",
         },
       ],
     },

@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import api from "../api";
+import { TASK_STATUS } from "../components/market-research/constants";
 
 export const useTaskProgressStore = create((set, get) => ({
   /**
@@ -24,12 +25,12 @@ export const useTaskProgressStore = create((set, get) => ({
   ) => {
     set((state) => {
       const existing = state.progressByTaskId.get(taskId);
-      if (existing?.status === "running") return state;
+      if (existing?.status === TASK_STATUS.RUNNING) return state;
       const next = new Map(state.progressByTaskId);
       next.set(taskId, {
         domainId,
         type,
-        status: "pending",
+        status: TASK_STATUS.PENDING,
         delegatedByTaskId: delegatedByTaskId ?? null,
         competitorName: competitorName ?? null,
         competitorId: competitorId ?? null,
@@ -54,7 +55,7 @@ export const useTaskProgressStore = create((set, get) => ({
         type,
         stage,
         message,
-        status: "running",
+        status: TASK_STATUS.RUNNING,
       });
       return { progressByTaskId: next };
     });
@@ -76,7 +77,7 @@ export const useTaskProgressStore = create((set, get) => ({
         ...existing,
         domainId: domainId ?? existing.domainId,
         type: type ?? existing.type,
-        status: "completed",
+        status: TASK_STATUS.COMPLETED,
         stage: null,
         message: null,
         error: null,
@@ -94,7 +95,7 @@ export const useTaskProgressStore = create((set, get) => ({
         ...existing,
         domainId: domainId ?? existing.domainId,
         type: type ?? existing.type,
-        status: "failed",
+        status: TASK_STATUS.FAILED,
         stage: null,
         message: null,
         error,
@@ -111,7 +112,7 @@ export const useTaskProgressStore = create((set, get) => ({
         ...existing,
         domainId: domainId ?? existing.domainId,
         type: type ?? existing.type,
-        status: "canceled",
+        status: TASK_STATUS.CANCELED,
         stage: null,
         message: null,
         error: null,
@@ -146,7 +147,7 @@ export const useTaskProgressStore = create((set, get) => ({
 
       const res = await api.getTasks(params);
       const tasks = res.data?.tasks ?? [];
-      const LIVE_STATUSES = new Set(["running", "pending"]);
+      const LIVE_STATUSES = new Set([TASK_STATUS.RUNNING, TASK_STATUS.PENDING]);
       set((state) => {
         const next = new Map();
         for (const [id, entry] of state.progressByTaskId) {
@@ -156,7 +157,7 @@ export const useTaskProgressStore = create((set, get) => ({
         }
         for (const task of tasks) {
           const existing = next.get(task.id);
-          if (existing?.status === "running" && task.status !== "running") {
+          if (existing?.status === TASK_STATUS.RUNNING && task.status !== TASK_STATUS.RUNNING) {
             continue;
           }
           next.set(task.id, {

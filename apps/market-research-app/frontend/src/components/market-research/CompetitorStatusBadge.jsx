@@ -1,7 +1,8 @@
 import { Badge } from "@chakra-ui/react";
+import { COMPETITOR_STATUS } from "./constants";
 
 export function CompetitorStatusBadge({ status }) {
-  if (status === "done") {
+  if (status === COMPETITOR_STATUS.DONE) {
     return (
       <Badge
         display="inline-flex"
@@ -20,7 +21,7 @@ export function CompetitorStatusBadge({ status }) {
     );
   }
 
-  if (status === "analyzing") {
+  if (status === COMPETITOR_STATUS.ANALYZING) {
     return (
       <Badge
         display="inline-flex"

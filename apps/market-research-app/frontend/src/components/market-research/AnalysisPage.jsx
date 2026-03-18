@@ -13,8 +13,8 @@ function ProgressBar() {
   const isAnalysisComplete = useMarketResearchStore((s) => s.isAnalysisComplete);
 
   const total = competitors.length;
-  const doneCount = competitors.filter((c) => c.status === "done").length;
-  const analyzingNow = competitors.find((c) => c.status === "analyzing");
+  const doneCount = competitors.filter((c) => c.status === COMPETITOR_STATUS.DONE).length;
+  const analyzingNow = competitors.find((c) => c.status === COMPETITOR_STATUS.ANALYZING);
 
   if (total === 0) return null;
 

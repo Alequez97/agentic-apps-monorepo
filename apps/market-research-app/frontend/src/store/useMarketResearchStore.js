@@ -11,6 +11,12 @@ import {
 } from "../api/market-research";
 import { useAuthStore } from "./useAuthStore";
 import { useProfileStore } from "./useProfileStore";
+import {
+  ANALYSIS_STATUS,
+  TASK_STATUS,
+  COMPETITOR_STATUS,
+  SUMMARY_STATUS,
+} from "../components/market-research/constants";
 
 function logLineToKind(log) {
   const lower = log.toLowerCase();
@@ -38,18 +44,22 @@ function buildHydratedActivityEvents(tasks = [], competitors = [], status = "idl
     if (task.type !== "market-research-competitor") return;
 
     const competitorName = task?.params?.competitorName || "Competitor";
-    const taskStatus = task?.status || "pending";
+    const taskStatus = task?.status || TASK_STATUS.PENDING;
     const kind =
-      taskStatus === "failed" ? "write" : taskStatus === "completed" ? "found" : "search";
+      taskStatus === TASK_STATUS.FAILED
+        ? "write"
+        : taskStatus === TASK_STATUS.COMPLETED
+          ? "found"
+          : "search";
 
     const message =
-      taskStatus === "running"
+      taskStatus === TASK_STATUS.RUNNING
         ? `Researching ${competitorName}.`
-        : taskStatus === "completed"
+        : taskStatus === TASK_STATUS.COMPLETED
           ? `Completed competitor analysis for ${competitorName}.`
-          : taskStatus === "failed"
+          : taskStatus === TASK_STATUS.FAILED
             ? `Competitor analysis failed for ${competitorName}.`
-            : taskStatus === "canceled"
+            : taskStatus === TASK_STATUS.CANCELED
               ? `Competitor analysis was canceled for ${competitorName}.`
               : `Queued competitor analysis for ${competitorName}.`;
 
@@ -63,7 +73,7 @@ function buildHydratedActivityEvents(tasks = [], competitors = [], status = "idl
     });
   });
 
-  if (status === "complete" || status === "completed") {
+  if (status === ANALYSIS_STATUS.COMPLETE || status === ANALYSIS_STATUS.COMPLETED) {
     events.unshift({
       id: `summary-${now + 1}`,
       kind: "write",
@@ -355,17 +365,17 @@ export const useMarketResearchStore = create(
             const profile = profileMap.get(entry.id) ?? {};
             const task = taskStatusMap.get(entry.id);
             const restoredStatus =
-              status === "complete" || status === "completed"
-                ? "done"
-                : task?.status === "running"
-                  ? "analyzing"
-                  : task?.status === "completed" || profile?.id
-                    ? "done"
-                    : task?.status === "failed"
-                      ? "failed"
-                      : task?.status === "canceled"
-                        ? "failed"
-                        : "queued";
+              status === ANALYSIS_STATUS.COMPLETE || status === ANALYSIS_STATUS.COMPLETED
+                ? COMPETITOR_STATUS.DONE
+                : task?.status === TASK_STATUS.RUNNING
+                  ? COMPETITOR_STATUS.ANALYZING
+                  : task?.status === TASK_STATUS.COMPLETED || profile?.id
+                    ? COMPETITOR_STATUS.DONE
+                    : task?.status === TASK_STATUS.FAILED
+                      ? COMPETITOR_STATUS.FAILED
+                      : task?.status === TASK_STATUS.CANCELED
+                        ? COMPETITOR_STATUS.FAILED
+                        : COMPETITOR_STATUS.QUEUED;
 
             return {
               ...entry,
@@ -395,28 +405,34 @@ export const useMarketResearchStore = create(
           set({
             reportId,
             idea: session?.idea ?? report?.idea ?? get().idea,
-            report: report && (status === "complete" || status === "completed") ? report : null,
+            report:
+              report &&
+              (status === ANALYSIS_STATUS.COMPLETE || status === ANALYSIS_STATUS.COMPLETED)
+                ? report
+                : null,
             competitors,
             competitorTaskMap,
             activityEvents: buildHydratedActivityEvents(tasks, competitors, status),
             analysisError: null,
-            isAnalyzing: status === "analyzing",
-            isAnalysisComplete: status === "complete" || status === "completed",
+            isAnalyzing: status === ANALYSIS_STATUS.ANALYZING,
+            isAnalysisComplete:
+              status === ANALYSIS_STATUS.COMPLETE || status === ANALYSIS_STATUS.COMPLETED,
             summaryStatus:
-              status === "failed"
-                ? "failed"
-                : status === "complete" || status === "completed"
-                  ? "ready"
+              status === ANALYSIS_STATUS.FAILED
+                ? SUMMARY_STATUS.FAILED
+                : status === ANALYSIS_STATUS.COMPLETE || status === ANALYSIS_STATUS.COMPLETED
+                  ? SUMMARY_STATUS.READY
                   : competitors.length === 0
-                    ? "finding-competitors"
+                    ? SUMMARY_STATUS.FINDING_COMPETITORS
                     : competitors.some(
                           (competitor) =>
-                            competitor.status === "queued" || competitor.status === "analyzing",
+                            competitor.status === COMPETITOR_STATUS.QUEUED ||
+                            competitor.status === COMPETITOR_STATUS.ANALYZING,
                         )
-                      ? "waiting-competitors"
-                      : status === "analyzing"
-                        ? "summarizing"
-                        : "idle",
+                      ? SUMMARY_STATUS.WAITING_COMPETITORS
+                      : status === ANALYSIS_STATUS.ANALYZING
+                        ? SUMMARY_STATUS.SUMMARIZING
+                        : SUMMARY_STATUS.IDLE,
           });
 
           return true;
@@ -436,10 +452,10 @@ export const useMarketResearchStore = create(
         if (existing?.loadFailed) return;
         try {
           const response = await getCompetitorDetails(reportId, competitorId);
-          if (response?.status === 202 && response?.data?.status === "retrying") {
+          if (response?.status === 202 && response?.data?.status === TASK_STATUS.RETRYING) {
             set((state) => ({
               competitors: state.competitors.map((c) =>
-                c.id === competitorId ? { ...c, status: "analyzing" } : c,
+                c.id === competitorId ? { ...c, status: COMPETITOR_STATUS.ANALYZING } : c,
               ),
             }));
             get()._syncSummaryStatus();
@@ -505,22 +521,24 @@ export const useMarketResearchStore = create(
       _syncSummaryStatus: () =>
         set((state) => {
           if (state.report || state.isAnalysisComplete) {
-            return { summaryStatus: "ready" };
+            return { summaryStatus: SUMMARY_STATUS.READY };
           }
           if (!state.isAnalyzing) {
-            return { summaryStatus: "idle" };
+            return { summaryStatus: SUMMARY_STATUS.IDLE };
           }
           if (state.competitors.length === 0) {
-            return { summaryStatus: "finding-competitors" };
+            return { summaryStatus: SUMMARY_STATUS.FINDING_COMPETITORS };
           }
           if (
             state.competitors.some(
-              (competitor) => competitor.status === "queued" || competitor.status === "analyzing",
+              (competitor) =>
+                competitor.status === COMPETITOR_STATUS.QUEUED ||
+                competitor.status === COMPETITOR_STATUS.ANALYZING,
             )
           ) {
-            return { summaryStatus: "waiting-competitors" };
+            return { summaryStatus: SUMMARY_STATUS.WAITING_COMPETITORS };
           }
-          return { summaryStatus: "summarizing" };
+          return { summaryStatus: SUMMARY_STATUS.SUMMARIZING };
         }),
 
       _addCompetitorStub: ({ taskId, competitorId, competitorName, competitorUrl }) =>
@@ -533,7 +551,7 @@ export const useMarketResearchStore = create(
                 id: competitorId,
                 name: competitorName,
                 url: competitorUrl,
-                status: "queued",
+                status: COMPETITOR_STATUS.QUEUED,
                 logoChar: competitorName?.[0]?.toUpperCase() ?? "?",
                 logoColor: "#6366f1",
                 logoBg: "#eef2ff",
@@ -544,14 +562,18 @@ export const useMarketResearchStore = create(
               [taskId]: competitorId,
             },
             summaryStatus:
-              state.summaryStatus === "idle" ? "waiting-competitors" : state.summaryStatus,
+              state.summaryStatus === SUMMARY_STATUS.IDLE
+                ? SUMMARY_STATUS.WAITING_COMPETITORS
+                : state.summaryStatus,
           };
         }),
 
       _mergeCompetitorProfile: (competitor) =>
         set((state) => ({
           competitors: state.competitors.map((entry) =>
-            entry.id === competitor.id ? { ...entry, ...competitor, status: "done" } : entry,
+            entry.id === competitor.id
+              ? { ...entry, ...competitor, status: COMPETITOR_STATUS.DONE }
+              : entry,
           ),
         })),
 
@@ -563,14 +585,14 @@ export const useMarketResearchStore = create(
       _applyReport: (report) => {
         const competitors = (report?.competitors || []).map((c) => ({
           ...c,
-          status: "done",
+          status: COMPETITOR_STATUS.DONE,
         }));
         set({
           report,
           competitors,
           isAnalyzing: false,
           isAnalysisComplete: true,
-          summaryStatus: "ready",
+          summaryStatus: SUMMARY_STATUS.READY,
         });
       },
 
@@ -578,7 +600,7 @@ export const useMarketResearchStore = create(
         set({
           isAnalyzing: false,
           isAnalysisComplete: true,
-          summaryStatus: "ready",
+          summaryStatus: SUMMARY_STATUS.READY,
         });
       },
 
@@ -586,7 +608,7 @@ export const useMarketResearchStore = create(
         set({
           isAnalyzing: false,
           isAnalysisComplete: false,
-          summaryStatus: "failed",
+          summaryStatus: SUMMARY_STATUS.FAILED,
         });
       },
 
@@ -594,7 +616,7 @@ export const useMarketResearchStore = create(
         set({
           isAnalyzing: false,
           isAnalysisComplete: false,
-          summaryStatus: "idle",
+          summaryStatus: SUMMARY_STATUS.IDLE,
         });
       },
 
@@ -608,40 +630,43 @@ export const useMarketResearchStore = create(
           activityEvents: [],
           competitorTaskMap: {},
           selectedCompetitorId: null,
-          isAnalyzing: entry.status === "analyzing",
+          isAnalyzing: entry.status === ANALYSIS_STATUS.ANALYZING,
           isAnalysisComplete: false,
           summaryStatus:
-            entry.status === "failed"
-              ? "failed"
-              : entry.status === "complete"
-                ? "summarizing"
-                : "finding-competitors",
+            entry.status === ANALYSIS_STATUS.FAILED
+              ? SUMMARY_STATUS.FAILED
+              : entry.status === ANALYSIS_STATUS.COMPLETE
+                ? SUMMARY_STATUS.SUMMARIZING
+                : SUMMARY_STATUS.FINDING_COMPETITORS,
         });
         try {
           const response = await fetchMarketResearchReport(reportId);
           const report = response?.data?.report;
-          const status = response?.data?.status ?? entry.status ?? "idle";
+          const status = response?.data?.status ?? entry.status ?? SUMMARY_STATUS.IDLE;
 
-          if (report && (status === "complete" || status === "completed")) {
+          if (
+            report &&
+            (status === ANALYSIS_STATUS.COMPLETE || status === ANALYSIS_STATUS.COMPLETED)
+          ) {
             get()._applyReport(report);
             return;
           }
 
           set({
-            isAnalyzing: status === "analyzing",
+            isAnalyzing: status === ANALYSIS_STATUS.ANALYZING,
             isAnalysisComplete: false,
             summaryStatus:
-              status === "failed"
-                ? "failed"
-                : status === "analyzing"
-                  ? "finding-competitors"
-                  : "idle",
+              status === ANALYSIS_STATUS.FAILED
+                ? SUMMARY_STATUS.FAILED
+                : status === ANALYSIS_STATUS.ANALYZING
+                  ? SUMMARY_STATUS.FINDING_COMPETITORS
+                  : SUMMARY_STATUS.IDLE,
           });
-          if (status === "failed") {
+          if (status === ANALYSIS_STATUS.FAILED) {
             get()._markAnalysisFailed();
           }
         } catch {
-          if (entry.status === "failed") {
+          if (entry.status === ANALYSIS_STATUS.FAILED) {
             get()._markAnalysisFailed();
           }
         }
