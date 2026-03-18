@@ -1,9 +1,17 @@
 import { Box, Button, Text, Textarea, VStack } from "@chakra-ui/react";
-import { Search } from "lucide-react";
+import { Loader2, Search } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuthStore } from "../../store/useAuthStore";
 import { useMarketResearchStore } from "../../store/useMarketResearchStore";
 import { RegionSelector } from "./RegionSelector";
+
+const REJECTION_MESSAGES = {
+  TOO_SHORT: "Your idea is too brief to research. Please add more detail.",
+  NOT_A_BUSINESS_IDEA:
+    "This doesn't look like a business idea. Try describing a product or service.",
+  INAPPROPRIATE: "This content isn't suitable for our platform.",
+  GIBBERISH: "We couldn't understand your input. Please describe your idea clearly.",
+};
 
 export function IdeaInputCard() {
   const user = useAuthStore((s) => s.user);
@@ -12,9 +20,11 @@ export function IdeaInputCard() {
   const setIdea = useMarketResearchStore((s) => s.setIdea);
   const regions = useMarketResearchStore((s) => s.regions);
   const startAnalysis = useMarketResearchStore((s) => s.startAnalysis);
+  const isValidating = useMarketResearchStore((s) => s.isValidating);
+  const validationError = useMarketResearchStore((s) => s.validationError);
 
   const regionValid = regions === null || regions.length > 0;
-  const canSubmit = idea.trim() && regionValid;
+  const canSubmit = idea.trim() && regionValid && !isValidating;
 
   const handleAnalyze = async () => {
     if (!user) {
@@ -22,8 +32,10 @@ export function IdeaInputCard() {
       return;
     }
 
-    await startAnalysis();
-    navigate("/analysis");
+    const result = await startAnalysis();
+    if (result?.success) {
+      navigate("/analysis");
+    }
   };
 
   return (
@@ -52,14 +64,41 @@ export function IdeaInputCard() {
             placeholder="Describe your business idea..."
             minH="120px"
             fontSize="13px"
-            borderColor="#cbd5e1"
+            borderColor={validationError ? "#f87171" : "#cbd5e1"}
             borderRadius="8px"
+            disabled={isValidating}
             _focus={{
-              borderColor: "#6366f1",
-              boxShadow: "0 0 0 3px rgba(99,102,241,.1)",
+              borderColor: validationError ? "#f87171" : "#6366f1",
+              boxShadow: validationError
+                ? "0 0 0 3px rgba(248,113,113,.15)"
+                : "0 0 0 3px rgba(99,102,241,.1)",
             }}
             _placeholder={{ color: "#94a3b8" }}
+            opacity={isValidating ? 0.6 : 1}
           />
+          {validationError && (
+            <VStack align="start" gap={1} w="full">
+              <Text fontSize="12px" color="#ef4444" fontWeight="500">
+                {REJECTION_MESSAGES[validationError.rejectionReason] ??
+                  "Please revise your idea and try again."}
+              </Text>
+              {validationError.suggestedPrompt && (
+                <Text fontSize="12px" color="#64748b">
+                  Suggestion:{" "}
+                  <Box
+                    as="span"
+                    color="#6366f1"
+                    cursor="pointer"
+                    fontWeight="500"
+                    textDecoration="underline"
+                    onClick={() => setIdea(validationError.suggestedPrompt)}
+                  >
+                    {validationError.suggestedPrompt}
+                  </Box>
+                </Text>
+              )}
+            </VStack>
+          )}
         </VStack>
 
         <RegionSelector />
@@ -89,8 +128,24 @@ export function IdeaInputCard() {
           w="full"
           opacity={!canSubmit ? 0.5 : 1}
         >
-          <Search size={16} strokeWidth={2.5} />
-          {user ? "Analyze Market" : "Sign in to analyze"}
+          {isValidating ? (
+            <>
+              <Box
+                as={Loader2}
+                size={16}
+                sx={{
+                  "@keyframes spin": { to: { transform: "rotate(360deg)" } },
+                  animation: "spin 1s linear infinite",
+                }}
+              />
+              Validating…
+            </>
+          ) : (
+            <>
+              <Search size={16} strokeWidth={2.5} />
+              {user ? "Analyze Market" : "Sign in to analyze"}
+            </>
+          )}
         </Button>
       </VStack>
     </Box>

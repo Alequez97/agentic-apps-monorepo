@@ -49,11 +49,7 @@ function buildHydratedActivityEvents(tasks = [], competitors = [], status = "idl
     const competitorName = task?.params?.competitorName || "Competitor";
     const taskStatus = task?.status || "pending";
     const kind =
-      taskStatus === "failed"
-        ? "write"
-        : taskStatus === "completed"
-          ? "found"
-          : "search";
+      taskStatus === "failed" ? "write" : taskStatus === "completed" ? "found" : "search";
 
     const message =
       taskStatus === "running"
@@ -102,6 +98,8 @@ export const useMarketResearchStore = create(
       // --- Analysis state ---
       reportId: null,
       analysisStartedAt: null,
+      isValidating: false,
+      validationError: null, // { rejectionReason, suggestedPrompt }
       isAnalyzing: false,
       isAnalysisComplete: false,
       summaryStatus: "idle",
@@ -115,7 +113,7 @@ export const useMarketResearchStore = create(
       clearIdea: () => set({ idea: "" }),
 
       // --- Input form actions ---
-      setIdea: (idea) => set({ idea }),
+      setIdea: (idea) => set({ idea, validationError: null }),
       setRegions: (regions) => set({ regions }),
       setBillingMode: (mode) => set({ billingMode: mode }),
       selectPlan: (plan) => set({ selectedPlan: plan }),
@@ -128,8 +126,10 @@ export const useMarketResearchStore = create(
         const reportId = crypto.randomUUID();
 
         set({
+          isValidating: true,
+          validationError: null,
           reportId,
-          isAnalyzing: true,
+          isAnalyzing: false,
           isAnalysisComplete: false,
           summaryStatus: "finding-competitors",
           competitors: [],
@@ -142,6 +142,7 @@ export const useMarketResearchStore = create(
 
         try {
           await requestMarketResearchAnalysis(reportId, idea, numCompetitors, regions);
+          set({ isValidating: false, isAnalyzing: true });
           useProfileStore.getState().upsertAnalysis({
             id: reportId,
             idea,
@@ -150,11 +151,28 @@ export const useMarketResearchStore = create(
             updatedAt: Date.now(),
             status: "analyzing",
           });
-        } catch {
+          return { success: true };
+        } catch (err) {
+          const data = err?.response?.data;
+          if (err?.response?.status === 422 && data?.rejectionReason) {
+            set({
+              isValidating: false,
+              isAnalyzing: false,
+              summaryStatus: "idle",
+              reportId: null,
+              validationError: {
+                rejectionReason: data.rejectionReason,
+                suggestedPrompt: data.suggestedPrompt ?? null,
+              },
+            });
+            return { success: false, rejected: true };
+          }
           set({
+            isValidating: false,
             isAnalyzing: false,
             isAnalysisComplete: false,
             summaryStatus: "failed",
+            validationError: null,
             competitors: [],
             report: null,
             competitorTaskMap: {},
@@ -168,6 +186,7 @@ export const useMarketResearchStore = create(
             updatedAt: Date.now(),
             status: "failed",
           });
+          return { success: false, rejected: false };
         }
       },
 
@@ -277,9 +296,7 @@ export const useMarketResearchStore = create(
           const status = session?.state?.status ?? report?.status ?? "idle";
 
           const profileMap = new Map(
-            competitorProfiles
-              .filter((entry) => entry?.id)
-              .map((entry) => [entry.id, entry]),
+            competitorProfiles.filter((entry) => entry?.id).map((entry) => [entry.id, entry]),
           );
           const taskMap = new Map(
             competitorTasks
@@ -323,10 +340,7 @@ export const useMarketResearchStore = create(
               taskId: taskMap.get(entry.id)?.taskId ?? task?.id ?? null,
               status: restoredStatus,
               logoChar:
-                profile?.logoChar ??
-                entry?.logoChar ??
-                entry?.name?.[0]?.toUpperCase() ??
-                "?",
+                profile?.logoChar ?? entry?.logoChar ?? entry?.name?.[0]?.toUpperCase() ?? "?",
               logoColor: profile?.logoColor ?? entry?.logoColor ?? "#6366f1",
               logoBg: profile?.logoBg ?? entry?.logoBg ?? "#eef2ff",
             };
@@ -348,10 +362,7 @@ export const useMarketResearchStore = create(
           set({
             reportId,
             idea: session?.idea ?? report?.idea ?? get().idea,
-            report:
-              report && (status === "complete" || status === "completed")
-                ? report
-                : null,
+            report: report && (status === "complete" || status === "completed") ? report : null,
             competitors,
             competitorTaskMap,
             activityEvents: buildHydratedActivityEvents(tasks, competitors, status),
@@ -366,8 +377,7 @@ export const useMarketResearchStore = create(
                     ? "finding-competitors"
                     : competitors.some(
                           (competitor) =>
-                            competitor.status === "queued" ||
-                            competitor.status === "analyzing",
+                            competitor.status === "queued" || competitor.status === "analyzing",
                         )
                       ? "waiting-competitors"
                       : status === "analyzing"
