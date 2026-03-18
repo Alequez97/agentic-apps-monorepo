@@ -1,11 +1,4 @@
-import {
-  Box,
-  Button,
-  HStack,
-  Skeleton,
-  Text,
-  VStack,
-} from "@chakra-ui/react";
+import { Box, Button, HStack, Skeleton, Text, VStack } from "@chakra-ui/react";
 import {
   BarChart2,
   ChevronRight,
@@ -119,40 +112,38 @@ function HistoryRow({ entry, isLast, onOpen, onRestart, onDelete, isDeleting }) 
           </Box>
         </HStack>
 
-        <HStack gap={2} flexWrap="wrap">
-          <HStack
-            gap={1.5}
-            bg="#f8fafc"
-            borderWidth="1px"
-            borderColor="#e2e8f0"
-            borderRadius="20px"
-            px={2.5}
-            py={1}
-          >
-            <BarChart2 size={11} color="#6366f1" strokeWidth={2} />
-            <Text fontSize="11px" fontWeight="600" color="#374151">
-              {entry.competitorCount} competitors
-            </Text>
-          </HStack>
+        <HStack gap={2} flexWrap="wrap" justify="space-between">
+          <HStack gap={2} flexWrap="wrap">
+            <HStack
+              gap={1.5}
+              bg="#f8fafc"
+              borderWidth="1px"
+              borderColor="#e2e8f0"
+              borderRadius="20px"
+              px={2.5}
+              py={1}
+            >
+              <BarChart2 size={11} color="#6366f1" strokeWidth={2} />
+              <Text fontSize="11px" fontWeight="600" color="#374151">
+                {entry.competitorCount} competitors
+              </Text>
+            </HStack>
 
-          <HStack
-            gap={1}
-            bg={statusStyle.bg}
-            borderWidth="1px"
-            borderColor={statusStyle.borderColor}
-            borderRadius="20px"
-            px={2.5}
-            py={1}
-          >
-            <Box w="5px" h="5px" borderRadius="50%" bg={statusStyle.dot} />
-            <Text fontSize="11px" fontWeight="600" color={statusStyle.color}>
-              {statusStyle.label}
-            </Text>
-          </HStack>
-        </HStack>
+            <HStack
+              gap={1}
+              bg={statusStyle.bg}
+              borderWidth="1px"
+              borderColor={statusStyle.borderColor}
+              borderRadius="20px"
+              px={2.5}
+              py={1}
+            >
+              <Box w="5px" h="5px" borderRadius="50%" bg={statusStyle.dot} />
+              <Text fontSize="11px" fontWeight="600" color={statusStyle.color}>
+                {statusStyle.label}
+              </Text>
+            </HStack>
 
-        <HStack justify="space-between">
-          <HStack gap={2}>
             {entry.status === "failed" && (
               <Button
                 size="xs"
@@ -258,20 +249,8 @@ export function AnalysisHistory({
   isDeleting,
 }) {
   return (
-    <Box
-      bg="white"
-      borderWidth="1px"
-      borderColor="#e2e8f0"
-      borderRadius="16px"
-      overflow="hidden"
-    >
-      <HStack
-        px={4}
-        py={3.5}
-        borderBottomWidth="1px"
-        borderColor="#f1f5f9"
-        justify="space-between"
-      >
+    <Box bg="white" borderWidth="1px" borderColor="#e2e8f0" borderRadius="16px" overflow="hidden">
+      <HStack px={4} py={3.5} borderBottomWidth="1px" borderColor="#f1f5f9" justify="space-between">
         <HStack gap={2}>
           <Box color="#6366f1">
             <FileText size={15} strokeWidth={2} />

@@ -1,4 +1,6 @@
-import { Box, HStack, Text, VStack } from "@chakra-ui/react";
+import { Box, Button, HStack, Text, VStack } from "@chakra-ui/react";
+import { useNavigate } from "react-router-dom";
+import { FileText } from "lucide-react";
 import { useMarketResearchStore } from "../../store/useMarketResearchStore";
 
 const shimmerStyle = {
@@ -33,8 +35,7 @@ const STATUS_COPY = {
   },
   ready: {
     title: "Summary ready",
-    description:
-      "The final verdict and cross-competitor insights are ready to review.",
+    description: "The final verdict and cross-competitor insights are ready to review.",
   },
   failed: {
     title: "Summary failed",
@@ -46,6 +47,7 @@ const STATUS_COPY = {
 export function MarketResearchSummaryPanel() {
   const summaryStatus = useMarketResearchStore((s) => s.summaryStatus);
   const isAnalysisComplete = useMarketResearchStore((s) => s.isAnalysisComplete);
+  const navigate = useNavigate();
 
   if (summaryStatus === "idle" && !isAnalysisComplete) {
     return null;
@@ -59,8 +61,10 @@ export function MarketResearchSummaryPanel() {
       borderRadius="12px"
       borderWidth="1px"
       borderColor="#e2e8f0"
-      p={5}
-      minH="242px"
+      pt={5}
+      px={5}
+      pb={summaryStatus === "ready" ? 4 : 5}
+      minH={summaryStatus === "ready" ? undefined : "242px"}
     >
       <HStack justify="space-between" align="start" mb={4}>
         <VStack align="start" gap={1}>
@@ -101,20 +105,42 @@ export function MarketResearchSummaryPanel() {
           fontSize="11px"
           fontWeight="700"
         >
-          {summaryStatus === "ready"
-            ? "Ready"
-            : summaryStatus === "failed"
-              ? "Failed"
-              : "Loading"}
+          {summaryStatus === "ready" ? "Ready" : summaryStatus === "failed" ? "Failed" : "Loading"}
         </Box>
       </HStack>
 
       <VStack align="stretch" gap={4}>
-        <SkeletonBlock h="74px" borderRadius="12px" />
-        <HStack align="stretch" gap={4}>
-          <SkeletonBlock h="108px" w="full" borderRadius="12px" />
-          <SkeletonBlock h="108px" w="full" borderRadius="12px" />
-        </HStack>
+        {summaryStatus === "ready" ? (
+          <Button
+            w="full"
+            display="flex"
+            alignItems="center"
+            justifyContent="center"
+            gap={2}
+            bg="linear-gradient(135deg, #6366f1, #7c3aed)"
+            color="white"
+            borderRadius="10px"
+            h="42px"
+            fontSize="13px"
+            fontWeight="600"
+            _hover={{ opacity: 0.9 }}
+            onClick={(e) => {
+              e.stopPropagation();
+              navigate("/summary");
+            }}
+          >
+            <FileText size={15} />
+            View Summary
+          </Button>
+        ) : (
+          <>
+            <SkeletonBlock h="74px" borderRadius="12px" />
+            <HStack align="stretch" gap={4}>
+              <SkeletonBlock h="108px" w="full" borderRadius="12px" />
+              <SkeletonBlock h="108px" w="full" borderRadius="12px" />
+            </HStack>
+          </>
+        )}
       </VStack>
     </Box>
   );

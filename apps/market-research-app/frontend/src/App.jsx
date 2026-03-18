@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import { ScrollToTop } from "./components/ScrollToTop";
 import { defaultSystem, ChakraProvider } from "@chakra-ui/react";
 import { Toaster } from "./components/ui/toaster";
 import { useSocketStore } from "./store/useSocketStore";
@@ -24,6 +25,7 @@ export default function App() {
   return (
     <ChakraProvider value={defaultSystem}>
       <BrowserRouter>
+        <ScrollToTop />
         <Routes>
           <Route element={<MarketResearchPage />}>
             <Route index element={<LandingPage />} />

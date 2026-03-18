@@ -133,13 +133,7 @@ export function AnalysisPage() {
     if (!reportId) return;
     if (competitors.length > 0 || activityEvents.length > 0 || isAnalysisComplete) return;
     hydrateAnalysis(reportId);
-  }, [
-    reportId,
-    competitors.length,
-    activityEvents.length,
-    isAnalysisComplete,
-    hydrateAnalysis,
-  ]);
+  }, [reportId, competitors.length, activityEvents.length, isAnalysisComplete, hydrateAnalysis]);
 
   return (
     <Box minH="100vh" bg="#f8fafc">
@@ -171,35 +165,37 @@ export function AnalysisPage() {
           <>
             {/* Tabs + progress */}
             <VStack align="start" gap={3} mb={6}>
-              <HStack gap={3} align="center">
-                <TabBar
-                  active={activeTab}
-                  onChange={setActiveTab}
-                  activityCount={activityEvents.length}
-                  isAnalyzing={isAnalyzing}
-                />
-                {isAnalyzing && (
-                  <Button
-                    h="28px"
-                    px={3.5}
-                    fontSize="12px"
-                    fontWeight="700"
-                    borderRadius="8px"
-                    bg="#fff1f2"
-                    color="#be123c"
-                    borderWidth="1px"
-                    borderColor="#fecdd3"
-                    _hover={{ bg: "#ffe4e6" }}
-                    onClick={async () => {
-                      const canceled = await cancelAnalysis();
-                      if (canceled) {
-                        navigate("/analyze");
-                      }
-                    }}
-                  >
-                    Cancel Analysis
-                  </Button>
-                )}
+              <HStack gap={3} align="center" w="full" justify="space-between">
+                <HStack gap={3} align="center">
+                  <TabBar
+                    active={activeTab}
+                    onChange={setActiveTab}
+                    activityCount={activityEvents.length}
+                    isAnalyzing={isAnalyzing}
+                  />
+                  {isAnalyzing && (
+                    <Button
+                      h="28px"
+                      px={3.5}
+                      fontSize="12px"
+                      fontWeight="700"
+                      borderRadius="8px"
+                      bg="#fff1f2"
+                      color="#be123c"
+                      borderWidth="1px"
+                      borderColor="#fecdd3"
+                      _hover={{ bg: "#ffe4e6" }}
+                      onClick={async () => {
+                        const canceled = await cancelAnalysis();
+                        if (canceled) {
+                          navigate("/analyze");
+                        }
+                      }}
+                    >
+                      Cancel Analysis
+                    </Button>
+                  )}
+                </HStack>
                 {isAnalysisComplete && (
                   <Button
                     h="28px"
