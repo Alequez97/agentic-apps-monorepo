@@ -16,10 +16,13 @@ export function ProfilePage() {
   const signOut = useAuthStore((s) => s.signOut);
   const analysisHistory = useProfileStore((s) => s.analysisHistory);
   const isLoading = useProfileStore((s) => s.isLoading);
+  const isDeleting = useProfileStore((s) => s.isDeleting);
   const clearHistory = useProfileStore((s) => s.clearHistory);
   const fetchHistory = useProfileStore((s) => s.fetchHistory);
+  const removeAnalysis = useProfileStore((s) => s.removeAnalysis);
   const openHistoryAnalysis = useMarketResearchStore((s) => s.openHistoryAnalysis);
   const restartAnalysis = useMarketResearchStore((s) => s.restartAnalysis);
+  const removeReportFromState = useMarketResearchStore((s) => s.removeReportFromState);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -55,6 +58,19 @@ export function ProfilePage() {
             });
             navigate(started ? "/analysis" : "/profile");
           }}
+          onDelete={async (entry) => {
+            const confirmed = window.confirm(
+              `Delete the report "${entry.idea || "Untitled analysis"}"?`,
+            );
+            if (!confirmed) return;
+
+            const removed = await removeAnalysis(entry.id);
+            if (!removed) return;
+
+            removeReportFromState(entry.id);
+            navigate("/profile");
+          }}
+          isDeleting={isDeleting}
         />
       </Box>
     </Box>

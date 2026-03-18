@@ -2,6 +2,7 @@ import { Router } from "express";
 import * as logger from "../utils/logger.js";
 import { requireAuth } from "../middleware/auth.js";
 import { validateRequest } from "../middleware/validation.js";
+import { TASK_TYPES } from "../constants/task-types.js";
 import {
   analyzeReportBodySchema,
   competitorParamsSchema,
@@ -30,6 +31,7 @@ export function createMarketResearchRouter({
   taskQueue,
   marketResearchRepository,
   subscriptionService,
+  orchestrator,
 }) {
   const router = Router();
 
@@ -142,6 +144,76 @@ export function createMarketResearchRouter({
     },
   );
 
+  router.get(
+    "/:reportId/status",
+    requireAuth,
+    validateRequest({ params: reportIdParamsSchema }),
+    async (req, res) => {
+      const { reportId } = req.params;
+
+      try {
+        const reportSession = await requireOwnedReport(
+          req,
+          res,
+          reportId,
+          marketResearchRepository,
+        );
+        if (!reportSession) return;
+
+        const [report, competitorTasks, liveTasks] = await Promise.all([
+          marketResearchRepository.getReport(reportId),
+          marketResearchRepository.getCompetitorTasks(reportId),
+          orchestrator.getTasks({
+            ownerId: req.userId,
+            status: ["pending", "running", "failed", "completed", "canceled"],
+          }),
+        ]);
+
+        const filteredLiveTasks = liveTasks.filter(
+          (task) =>
+            task?.params?.sessionId === reportId &&
+            [
+              TASK_TYPES.MARKET_RESEARCH_INITIAL,
+              TASK_TYPES.MARKET_RESEARCH_COMPETITOR,
+              TASK_TYPES.MARKET_RESEARCH_SUMMARY,
+            ].includes(task.type),
+        );
+
+        const competitorIds = Array.from(
+          new Set(
+            (competitorTasks || [])
+              .map((entry) => entry?.competitorId)
+              .concat((report?.competitors || []).map((entry) => entry?.id))
+              .filter(Boolean),
+          ),
+        );
+
+        const competitors = await marketResearchRepository.getCompetitorProfiles(
+          reportId,
+          competitorIds,
+        );
+
+        return res.json({
+          session: reportSession,
+          report,
+          competitorTasks: competitorTasks ?? [],
+          competitors,
+          tasks: filteredLiveTasks,
+        });
+      } catch (error) {
+        if (error.message === "Invalid sessionId format") {
+          return res.status(400).json({ error: "Invalid reportId format" });
+        }
+        logger.error("Failed to hydrate market research report state", {
+          error: error.message,
+          reportId,
+          component: "MarketResearchRoutes",
+        });
+        return res.status(500).json({ error: "Failed to load report state" });
+      }
+    },
+  );
+
   // POST /api/market-research/:reportId/analyze
   // Queue a market research run for this report.
   router.post(
@@ -221,6 +293,129 @@ export function createMarketResearchRouter({
     },
   );
 
+  router.post(
+    "/:reportId/cancel",
+    requireAuth,
+    validateRequest({ params: reportIdParamsSchema }),
+    async (req, res) => {
+      const { reportId } = req.params;
+
+      try {
+        const reportSession = await requireOwnedReport(
+          req,
+          res,
+          reportId,
+          marketResearchRepository,
+        );
+        if (!reportSession) return;
+
+        const tasks = await orchestrator.getTasks({
+          ownerId: req.userId,
+          status: ["pending", "running"],
+        });
+
+        const reportTasks = tasks.filter(
+          (task) =>
+            task?.params?.sessionId === reportId &&
+            [
+              TASK_TYPES.MARKET_RESEARCH_INITIAL,
+              TASK_TYPES.MARKET_RESEARCH_COMPETITOR,
+              TASK_TYPES.MARKET_RESEARCH_SUMMARY,
+            ].includes(task.type),
+        );
+
+        const cancelResults = await Promise.all(
+          reportTasks.map((task) => orchestrator.cancelTask(task.id)),
+        );
+        const canceledTaskIds = cancelResults
+          .filter((result) => result?.success && result.task?.id)
+          .map((result) => result.task.id);
+
+        await marketResearchRepository.upsertSession(
+          reportId,
+          reportSession.idea,
+          {
+            ...(reportSession.state || {}),
+            status: "canceled",
+            canceledAt: Date.now(),
+          },
+          reportSession.ownerId,
+        );
+
+        return res.json({
+          success: true,
+          canceledTaskIds,
+        });
+      } catch (error) {
+        if (error.message === "Invalid sessionId format") {
+          return res.status(400).json({ error: "Invalid reportId format" });
+        }
+        logger.error("Failed to cancel market research task(s)", {
+          error: error.message,
+          reportId,
+          component: "MarketResearchRoutes",
+        });
+        return res.status(500).json({ error: "Failed to cancel analysis" });
+      }
+    },
+  );
+
+  router.delete(
+    "/:reportId",
+    requireAuth,
+    validateRequest({ params: reportIdParamsSchema }),
+    async (req, res) => {
+      const { reportId } = req.params;
+
+      try {
+        const reportSession = await requireOwnedReport(
+          req,
+          res,
+          reportId,
+          marketResearchRepository,
+        );
+        if (!reportSession) return;
+
+        const tasks = await orchestrator.getTasks({
+          ownerId: req.userId,
+          status: ["pending", "running"],
+        });
+
+        const reportTasks = tasks.filter(
+          (task) =>
+            task?.params?.sessionId === reportId &&
+            [
+              TASK_TYPES.MARKET_RESEARCH_INITIAL,
+              TASK_TYPES.MARKET_RESEARCH_COMPETITOR,
+              TASK_TYPES.MARKET_RESEARCH_SUMMARY,
+            ].includes(task.type),
+        );
+
+        await Promise.all(
+          reportTasks.map((task) => orchestrator.cancelTask(task.id)),
+        );
+
+        const deleted = await marketResearchRepository.deleteSession(reportId);
+
+        if (!deleted) {
+          return res.status(404).json({ error: "Report not found or expired" });
+        }
+
+        return res.json({ success: true });
+      } catch (error) {
+        if (error.message === "Invalid sessionId format") {
+          return res.status(400).json({ error: "Invalid reportId format" });
+        }
+        logger.error("Failed to delete market research report", {
+          error: error.message,
+          reportId,
+          component: "MarketResearchRoutes",
+        });
+        return res.status(500).json({ error: "Failed to delete report" });
+      }
+    },
+  );
+
   // GET /api/market-research/:reportId/competitors/:competitorId
   // Retrieve one competitor profile for a report.
   router.get(
@@ -286,19 +481,27 @@ export function createMarketResearchRouter({
       if (!reportSession) return;
 
       const report = await marketResearchRepository.getReport(reportId);
-      if (!report) {
+      const status = reportSession.state?.status ?? "analyzing";
+      const isComplete =
+        status === "complete" ||
+        status === "completed" ||
+        report?.status === "complete";
+
+      if (!report || !isComplete) {
         return res.json({
-          status: reportSession.state?.status ?? "analyzing",
+          status,
           report: null,
           error: reportSession.state?.error ?? null,
           message:
-            reportSession.state?.status === "failed"
+            status === "failed"
               ? "Analysis failed before a final report was generated"
+              : report
+                ? "Initial report draft exists, but summary is still in progress"
               : "Analysis may still be in progress or has not been started",
         });
       }
       return res.json({
-        status: reportSession.state?.status ?? "complete",
+        status,
         report,
         error: reportSession.state?.error ?? null,
       });

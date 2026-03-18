@@ -3,8 +3,10 @@ import { persist, createJSONStorage } from "zustand/middleware";
 import {
   requestMarketResearchAnalysis,
   getMarketResearchReport as fetchMarketResearchReport,
+  getMarketResearchStatus,
   getCompetitorDetails,
   restartMarketResearchAnalysis,
+  cancelMarketResearchAnalysis,
 } from "../api/market-research";
 import { useProfileStore } from "./useProfileStore";
 
@@ -19,6 +21,74 @@ function logLineToKind(log) {
 }
 
 export { logLineToKind };
+
+function buildHydratedActivityEvents(tasks = [], competitors = [], status = "idle") {
+  const events = [];
+  const now = Date.now();
+
+  if (tasks.length > 0) {
+    events.push({
+      id: `restore-${now}`,
+      kind: "search",
+      message: "Restored analysis progress after page reload.",
+      agent: "System",
+      agentColor: "#64748b",
+      timestamp: now,
+    });
+  }
+
+  const byCreatedAt = [...tasks].sort((a, b) => {
+    const aTs = Date.parse(a?.createdAt || "") || 0;
+    const bTs = Date.parse(b?.createdAt || "") || 0;
+    return aTs - bTs;
+  });
+
+  byCreatedAt.forEach((task, index) => {
+    if (task.type !== "market-research-competitor") return;
+
+    const competitorName = task?.params?.competitorName || "Competitor";
+    const taskStatus = task?.status || "pending";
+    const kind =
+      taskStatus === "failed"
+        ? "write"
+        : taskStatus === "completed"
+          ? "found"
+          : "search";
+
+    const message =
+      taskStatus === "running"
+        ? `Researching ${competitorName}.`
+        : taskStatus === "completed"
+          ? `Completed competitor analysis for ${competitorName}.`
+          : taskStatus === "failed"
+            ? `Competitor analysis failed for ${competitorName}.`
+            : taskStatus === "canceled"
+              ? `Competitor analysis was canceled for ${competitorName}.`
+              : `Queued competitor analysis for ${competitorName}.`;
+
+    events.push({
+      id: `task-${task.id || index}`,
+      kind,
+      message,
+      agent: "Competitor",
+      agentColor: "#d97706",
+      timestamp: Date.parse(task?.createdAt || "") || now - index - 1,
+    });
+  });
+
+  if (status === "complete" || status === "completed") {
+    events.unshift({
+      id: `summary-${now + 1}`,
+      kind: "write",
+      message: `Compiled final report for ${competitors.length} competitors.`,
+      agent: "Summary",
+      agentColor: "#0f766e",
+      timestamp: now + 1,
+    });
+  }
+
+  return events.sort((a, b) => b.timestamp - a.timestamp);
+}
 
 export const useMarketResearchStore = create(
   persist(
@@ -146,9 +216,36 @@ export const useMarketResearchStore = create(
         }
       },
 
+      cancelAnalysis: async () => {
+        const { reportId, idea } = get();
+        if (!reportId) return false;
+
+        try {
+          await cancelMarketResearchAnalysis(reportId);
+          set({
+            isAnalyzing: false,
+            isAnalysisComplete: false,
+            summaryStatus: "idle",
+          });
+          useProfileStore.getState().upsertAnalysis({
+            id: reportId,
+            idea: idea ?? "Untitled analysis",
+            completedAt: Date.now(),
+            updatedAt: Date.now(),
+            competitorCount: get().competitors.length,
+            status: "canceled",
+          });
+          return true;
+        } catch {
+          return false;
+        }
+      },
+
       resetAnalysis: () => {
         set({
           reportId: null,
+          idea: "",
+          regions: null,
           isAnalyzing: false,
           isAnalysisComplete: false,
           summaryStatus: "idle",
@@ -159,6 +256,129 @@ export const useMarketResearchStore = create(
           report: null,
           competitorTaskMap: {},
         });
+      },
+
+      removeReportFromState: (reportId) => {
+        if (!reportId || get().reportId !== reportId) return;
+        get().resetAnalysis();
+      },
+
+      hydrateAnalysis: async (incomingReportId = null) => {
+        const reportId = incomingReportId ?? get().reportId;
+        if (!reportId) return false;
+
+        try {
+          const response = await getMarketResearchStatus(reportId);
+          const session = response?.data?.session ?? null;
+          const report = response?.data?.report ?? null;
+          const competitorTasks = response?.data?.competitorTasks ?? [];
+          const competitorProfiles = response?.data?.competitors ?? [];
+          const tasks = response?.data?.tasks ?? [];
+          const status = session?.state?.status ?? report?.status ?? "idle";
+
+          const profileMap = new Map(
+            competitorProfiles
+              .filter((entry) => entry?.id)
+              .map((entry) => [entry.id, entry]),
+          );
+          const taskMap = new Map(
+            competitorTasks
+              .filter((entry) => entry?.competitorId)
+              .map((entry) => [entry.competitorId, entry]),
+          );
+          const taskStatusMap = new Map(
+            tasks
+              .filter((task) => task?.type === "market-research-competitor")
+              .map((task) => [task?.params?.competitorId, task]),
+          );
+
+          const draftCompetitors = Array.isArray(report?.competitors) ? report.competitors : [];
+          const fallbackCompetitors = competitorTasks.map((entry) => ({
+            id: entry.competitorId,
+            name: profileMap.get(entry.competitorId)?.name ?? entry.competitorId,
+            url: profileMap.get(entry.competitorId)?.url ?? "",
+          }));
+          const sourceCompetitors =
+            draftCompetitors.length > 0 ? draftCompetitors : fallbackCompetitors;
+
+          const competitors = sourceCompetitors.map((entry) => {
+            const profile = profileMap.get(entry.id) ?? {};
+            const task = taskStatusMap.get(entry.id);
+            const restoredStatus =
+              status === "complete" || status === "completed"
+                ? "done"
+                : task?.status === "running"
+                  ? "analyzing"
+                  : task?.status === "completed" || profile?.id
+                    ? "done"
+                    : task?.status === "failed"
+                      ? "failed"
+                      : task?.status === "canceled"
+                        ? "failed"
+                        : "queued";
+
+            return {
+              ...entry,
+              ...profile,
+              taskId: taskMap.get(entry.id)?.taskId ?? task?.id ?? null,
+              status: restoredStatus,
+              logoChar:
+                profile?.logoChar ??
+                entry?.logoChar ??
+                entry?.name?.[0]?.toUpperCase() ??
+                "?",
+              logoColor: profile?.logoColor ?? entry?.logoColor ?? "#6366f1",
+              logoBg: profile?.logoBg ?? entry?.logoBg ?? "#eef2ff",
+            };
+          });
+
+          const competitorTaskMap = {};
+          competitorTasks.forEach((entry) => {
+            if (entry?.taskId && entry?.competitorId) {
+              competitorTaskMap[entry.taskId] = entry.competitorId;
+            }
+          });
+          tasks.forEach((task) => {
+            const competitorId = task?.params?.competitorId;
+            if (task?.id && competitorId && !competitorTaskMap[task.id]) {
+              competitorTaskMap[task.id] = competitorId;
+            }
+          });
+
+          set({
+            reportId,
+            idea: session?.idea ?? report?.idea ?? get().idea,
+            report:
+              report && (status === "complete" || status === "completed")
+                ? report
+                : null,
+            competitors,
+            competitorTaskMap,
+            activityEvents: buildHydratedActivityEvents(tasks, competitors, status),
+            isAnalyzing: status === "analyzing",
+            isAnalysisComplete: status === "complete" || status === "completed",
+            summaryStatus:
+              status === "failed"
+                ? "failed"
+                : status === "complete" || status === "completed"
+                  ? "ready"
+                  : competitors.length === 0
+                    ? "finding-competitors"
+                    : competitors.some(
+                          (competitor) =>
+                            competitor.status === "queued" ||
+                            competitor.status === "analyzing",
+                        )
+                      ? "waiting-competitors"
+                      : status === "analyzing"
+                        ? "summarizing"
+                        : "idle",
+          });
+
+          return true;
+        } catch {
+          return false;
+        }
       },
 
       selectCompetitor: (id) => set({ selectedCompetitorId: id }),
@@ -291,6 +511,14 @@ export const useMarketResearchStore = create(
         });
       },
 
+      _markAnalysisCanceled: () => {
+        set({
+          isAnalyzing: false,
+          isAnalysisComplete: false,
+          summaryStatus: "idle",
+        });
+      },
+
       openHistoryAnalysis: async (entry) => {
         const reportId = entry.id;
         set({
@@ -315,7 +543,7 @@ export const useMarketResearchStore = create(
           const report = response?.data?.report;
           const status = response?.data?.status ?? entry.status ?? "idle";
 
-          if (report) {
+          if (report && (status === "complete" || status === "completed")) {
             get()._applyReport(report);
             return;
           }

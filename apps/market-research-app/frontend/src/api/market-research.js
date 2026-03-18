@@ -21,6 +21,9 @@ export const requestMarketResearchAnalysis = (
 export const getMarketResearchReport = (reportId) =>
   client.get(`/market-research/${reportId}/report`);
 
+export const getMarketResearchStatus = (reportId) =>
+  client.get(`/market-research/${reportId}/status`);
+
 export const getCompetitorDetails = (reportId, competitorId) =>
   client.get(`/market-research/${reportId}/competitors/${competitorId}`);
 
@@ -29,3 +32,9 @@ export const restartMarketResearchAnalysis = (reportId, idea, regions) =>
     idea,
     regions: regions ?? null,
   });
+
+export const cancelMarketResearchAnalysis = (reportId) =>
+  client.post(`/market-research/${reportId}/cancel`);
+
+export const deleteMarketResearchReport = (reportId) =>
+  client.delete(`/market-research/${reportId}`);

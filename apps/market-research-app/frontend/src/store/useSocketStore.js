@@ -129,7 +129,8 @@ export const useSocketStore = create((set, get) => ({
           getMarketResearchReport(reportId)
             .then((response) => {
               const report = response?.data?.report;
-              if (report) {
+              const status = response?.data?.status;
+              if (report && (status === "complete" || status === "completed")) {
                 useMarketResearchStore.getState()._applyReport(report);
               } else {
                 useMarketResearchStore.getState()._markAnalysisFailed();
@@ -191,10 +192,35 @@ export const useSocketStore = create((set, get) => ({
 
     socket.on(SOCKET_EVENTS.TASK_CANCELED, (data) => {
       const { type, taskId, domainId } = data;
+      const reportId = data?.params?.sessionId;
+      const idea = data?.params?.idea;
       if (taskId) {
         useTaskProgressStore
           .getState()
           .setCanceled({ id: taskId, type, domainId });
+      }
+
+      if (
+        reportId &&
+        [
+          TASK_TYPES.MARKET_RESEARCH_INITIAL,
+          TASK_TYPES.MARKET_RESEARCH_COMPETITOR,
+          TASK_TYPES.MARKET_RESEARCH_SUMMARY,
+        ].includes(type)
+      ) {
+        useProfileStore.getState().upsertAnalysis({
+          id: reportId,
+          idea: idea ?? useMarketResearchStore.getState().idea ?? "Untitled analysis",
+          completedAt: Date.now(),
+          updatedAt: Date.now(),
+          competitorCount: useMarketResearchStore.getState().competitors.length,
+          status: "canceled",
+        });
+      }
+
+      const mrStore = useMarketResearchStore.getState();
+      if (reportId && reportId === mrStore.reportId) {
+        mrStore._markAnalysisCanceled();
       }
     });
 
@@ -234,7 +260,8 @@ export const useSocketStore = create((set, get) => ({
       getMarketResearchReport(reportId)
         .then((response) => {
           const report = response?.data?.report;
-          if (report) {
+          const status = response?.data?.status;
+          if (report && (status === "complete" || status === "completed")) {
             useMarketResearchStore.getState()._applyReport(report);
           } else {
             useMarketResearchStore.getState()._markAnalysisFailed();

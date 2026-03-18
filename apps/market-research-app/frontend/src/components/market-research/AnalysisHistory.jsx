@@ -3,7 +3,6 @@ import {
   Button,
   HStack,
   Skeleton,
-  SkeletonText,
   Text,
   VStack,
 } from "@chakra-ui/react";
@@ -11,6 +10,7 @@ import {
   BarChart2,
   ChevronRight,
   Clock,
+  Trash2,
   FileText,
   Inbox,
   RefreshCcw,
@@ -53,6 +53,16 @@ function getStatusStyle(status) {
     };
   }
 
+  if (status === "canceled") {
+    return {
+      bg: "#f8fafc",
+      borderColor: "#e2e8f0",
+      dot: "#64748b",
+      color: "#475569",
+      label: "Canceled",
+    };
+  }
+
   return {
     bg: "rgba(22,163,74,0.08)",
     borderColor: "rgba(22,163,74,0.25)",
@@ -62,7 +72,7 @@ function getStatusStyle(status) {
   };
 }
 
-function HistoryRow({ entry, isLast, onOpen, onRestart }) {
+function HistoryRow({ entry, isLast, onOpen, onRestart, onDelete, isDeleting }) {
   const statusStyle = getStatusStyle(entry.status);
 
   return (
@@ -160,6 +170,24 @@ function HistoryRow({ entry, isLast, onOpen, onRestart }) {
           </Button>
         )}
 
+        <Button
+          size="xs"
+          variant="ghost"
+          h="28px"
+          minW="28px"
+          px={2}
+          borderRadius="8px"
+          color="#94a3b8"
+          _hover={{ bg: "#fef2f2", color: "#dc2626" }}
+          isDisabled={isDeleting}
+          onClick={(event) => {
+            event.stopPropagation();
+            onDelete(entry);
+          }}
+        >
+          <Trash2 size={12} />
+        </Button>
+
         <Box color="#c7d2fe" flexShrink={0}>
           <ChevronRight size={15} strokeWidth={2.5} />
         </Box>
@@ -219,7 +247,15 @@ function HistoryLoading() {
   );
 }
 
-export function AnalysisHistory({ history, isLoading, onClear, onOpen, onRestart }) {
+export function AnalysisHistory({
+  history,
+  isLoading,
+  onClear,
+  onOpen,
+  onRestart,
+  onDelete,
+  isDeleting,
+}) {
   return (
     <Box
       bg="white"
@@ -281,6 +317,8 @@ export function AnalysisHistory({ history, isLoading, onClear, onOpen, onRestart
               isLast={i === history.length - 1}
               onOpen={() => onOpen(entry)}
               onRestart={onRestart}
+              onDelete={onDelete}
+              isDeleting={isDeleting}
             />
           ))}
         </VStack>

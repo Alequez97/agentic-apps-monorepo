@@ -1,9 +1,13 @@
 import { create } from "zustand";
-import { getAnalysisHistory } from "../api/market-research";
+import {
+  deleteMarketResearchReport,
+  getAnalysisHistory,
+} from "../api/market-research";
 
 export const useProfileStore = create((set) => ({
   analysisHistory: [],
   isLoading: false,
+  isDeleting: false,
   error: null,
 
   fetchHistory: async () => {
@@ -40,6 +44,24 @@ export const useProfileStore = create((set) => ({
           .slice(0, 100),
       };
     }),
+
+  removeAnalysis: async (reportId) => {
+    set({ isDeleting: true, error: null });
+    try {
+      await deleteMarketResearchReport(reportId);
+      set((state) => ({
+        analysisHistory: state.analysisHistory.filter((item) => item.id !== reportId),
+        isDeleting: false,
+      }));
+      return true;
+    } catch (err) {
+      set({
+        error: err.message ?? "Failed to delete report",
+        isDeleting: false,
+      });
+      return false;
+    }
+  },
 
   clearHistory: () => set({ analysisHistory: [] }),
 }));

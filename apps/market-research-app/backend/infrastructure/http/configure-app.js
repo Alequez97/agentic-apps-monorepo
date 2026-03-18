@@ -59,6 +59,7 @@ export function configureApp({
       taskQueue,
       marketResearchRepository,
       subscriptionService,
+      orchestrator,
     }),
   );
   app.use("/api/auth", createAuthRouter({ userRepository, subscriptionService }));

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Box, Button, HStack, Text, VStack } from "@chakra-ui/react";
 import { useNavigate } from "react-router-dom";
 import { useMarketResearchStore } from "../../store/useMarketResearchStore";
@@ -116,6 +116,9 @@ export function AnalysisPage() {
   const activityEvents = useMarketResearchStore((s) => s.activityEvents);
   const isAnalyzing = useMarketResearchStore((s) => s.isAnalyzing);
   const isAnalysisComplete = useMarketResearchStore((s) => s.isAnalysisComplete);
+  const cancelAnalysis = useMarketResearchStore((s) => s.cancelAnalysis);
+  const hydrateAnalysis = useMarketResearchStore((s) => s.hydrateAnalysis);
+  const reportId = useMarketResearchStore((s) => s.reportId);
   const navigate = useNavigate();
   const goToSummary = () => {
     navigate("/summary");
@@ -125,6 +128,18 @@ export function AnalysisPage() {
   const competitors = useMarketResearchStore((s) => s.competitors);
 
   const selectedCompetitor = competitors.find((c) => c.id === selectedCompetitorId) ?? null;
+
+  useEffect(() => {
+    if (!reportId) return;
+    if (competitors.length > 0 || activityEvents.length > 0 || isAnalysisComplete) return;
+    hydrateAnalysis(reportId);
+  }, [
+    reportId,
+    competitors.length,
+    activityEvents.length,
+    isAnalysisComplete,
+    hydrateAnalysis,
+  ]);
 
   return (
     <Box minH="100vh" bg="#f8fafc">
@@ -163,6 +178,28 @@ export function AnalysisPage() {
                   activityCount={activityEvents.length}
                   isAnalyzing={isAnalyzing}
                 />
+                {isAnalyzing && (
+                  <Button
+                    h="28px"
+                    px={3.5}
+                    fontSize="12px"
+                    fontWeight="700"
+                    borderRadius="8px"
+                    bg="#fff1f2"
+                    color="#be123c"
+                    borderWidth="1px"
+                    borderColor="#fecdd3"
+                    _hover={{ bg: "#ffe4e6" }}
+                    onClick={async () => {
+                      const canceled = await cancelAnalysis();
+                      if (canceled) {
+                        navigate("/analyze");
+                      }
+                    }}
+                  >
+                    Cancel Analysis
+                  </Button>
+                )}
                 {isAnalysisComplete && (
                   <Button
                     h="28px"
