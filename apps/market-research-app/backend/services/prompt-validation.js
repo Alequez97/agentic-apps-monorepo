@@ -14,15 +14,78 @@ export const REJECTION_REASONS = {
   GIBBERISH: "GIBBERISH",
 };
 
-/**
- * Validates an analysis prompt using GPT-5 mini.
- * Fails open — if the API call errors, shouldContinue defaults to true.
- *
- * @param {string} idea
- * @param {string} apiKey - OpenAI API key
- * @returns {Promise<{ shouldContinue: boolean, rejectionReason: string|null, suggestedPrompt: string|null }>}
- */
+const HIGH_RISK_TERMS = [
+  "sex",
+  "porn",
+  "xxx",
+  "escort",
+  "cocaine",
+  "heroin",
+  "meth",
+  "drugs",
+  "drug",
+];
+
+function normalizeValidationResult(result) {
+  if (!result || typeof result !== "object") {
+    return null;
+  }
+
+  const rejectionReason = result.rejectionReason ?? null;
+  const isKnownReason =
+    rejectionReason === null || Object.values(REJECTION_REASONS).includes(rejectionReason);
+
+  if (!isKnownReason) {
+    return null;
+  }
+
+  return {
+    shouldContinue: Boolean(result.shouldContinue),
+    rejectionReason,
+    suggestedPrompt: result.suggestedPrompt ?? null,
+  };
+}
+
+function validatePromptLocally(idea) {
+  const normalized = String(idea ?? "").trim();
+  const lower = normalized.toLowerCase();
+  const words = lower.match(/[a-z0-9]+/g) ?? [];
+  const meaningfulWords = words.filter((word) => word.length > 2);
+  const hasHighRiskTerms = HIGH_RISK_TERMS.some((term) => lower.includes(term));
+
+  if (!normalized) {
+    return {
+      shouldContinue: false,
+      rejectionReason: REJECTION_REASONS.TOO_SHORT,
+      suggestedPrompt: null,
+    };
+  }
+
+  if (!/[a-z]/i.test(normalized) || meaningfulWords.length === 0) {
+    return {
+      shouldContinue: false,
+      rejectionReason: REJECTION_REASONS.GIBBERISH,
+      suggestedPrompt: null,
+    };
+  }
+
+  if (hasHighRiskTerms) {
+    return {
+      shouldContinue: false,
+      rejectionReason: REJECTION_REASONS.INAPPROPRIATE,
+      suggestedPrompt: null,
+    };
+  }
+
+  return null;
+}
+
 export async function validateAnalysisPrompt(idea, apiKey) {
+  const localValidation = validatePromptLocally(idea);
+  if (localValidation) {
+    return localValidation;
+  }
+
   try {
     const systemInstruction = await fs.readFile(INSTRUCTION_FILE, "utf-8");
 
@@ -38,15 +101,19 @@ export async function validateAnalysisPrompt(idea, apiKey) {
 
     const response = await client.sendMessage(state.messages);
     const raw = response?.content ?? "";
-    const parsed = JSON.parse(raw);
+    const parsed = normalizeValidationResult(JSON.parse(raw));
 
-    return {
-      shouldContinue: Boolean(parsed.shouldContinue),
-      rejectionReason: parsed.rejectionReason ?? null,
-      suggestedPrompt: parsed.suggestedPrompt ?? null,
-    };
+    if (!parsed) {
+      throw new Error("Prompt validation returned an invalid payload");
+    }
+
+    return parsed;
   } catch (error) {
-    // Fail open — don't block user if validation service is unavailable
+    const fallbackValidation = validatePromptLocally(idea);
+    if (fallbackValidation) {
+      return fallbackValidation;
+    }
+
     logger.warn("Prompt validation failed, allowing request through", {
       error: error.message,
       component: "PromptValidation",

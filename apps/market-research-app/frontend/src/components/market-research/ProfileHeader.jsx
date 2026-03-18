@@ -1,5 +1,5 @@
 import { Badge, Box, Button, HStack, Text } from "@chakra-ui/react";
-import { LogOut, User } from "lucide-react";
+import { LogOut, Plus, User } from "lucide-react";
 
 function getInitials(email) {
   if (!email) return "?";
@@ -7,7 +7,7 @@ function getInitials(email) {
   return local.slice(0, 2).toUpperCase();
 }
 
-export function ProfileHeader({ user, onSignOut }) {
+export function ProfileHeader({ user, onSignOut, onStartResearch }) {
   const initials = getInitials(user.email);
 
   return (
@@ -98,23 +98,41 @@ export function ProfileHeader({ user, onSignOut }) {
             </Text>
           </HStack>
 
-          <Button
-            size="sm"
-            variant="outline"
-            fontSize="12px"
-            fontWeight="600"
-            borderColor="#fecdd3"
-            color="#e11d48"
-            borderRadius="8px"
-            h="30px"
-            px={3}
-            gap={1.5}
-            _hover={{ bg: "#fff1f2", borderColor: "#fb7185" }}
-            onClick={onSignOut}
-          >
-            <LogOut size={12} />
-            Sign out
-          </Button>
+          <HStack gap={2} flexWrap="wrap">
+            <Button
+              size="sm"
+              fontSize="12px"
+              fontWeight="700"
+              bg="linear-gradient(135deg, #0f172a, #334155)"
+              color="white"
+              borderRadius="8px"
+              h="32px"
+              px={3}
+              gap={1.5}
+              _hover={{ opacity: 0.92 }}
+              onClick={onStartResearch}
+            >
+              <Plus size={12} />
+              Start new research
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              fontSize="12px"
+              fontWeight="600"
+              borderColor="#fecdd3"
+              color="#e11d48"
+              borderRadius="8px"
+              h="32px"
+              px={3}
+              gap={1.5}
+              _hover={{ bg: "#fff1f2", borderColor: "#fb7185" }}
+              onClick={onSignOut}
+            >
+              <LogOut size={12} />
+              Sign out
+            </Button>
+          </HStack>
         </Box>
       </HStack>
     </Box>

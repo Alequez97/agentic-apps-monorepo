@@ -67,6 +67,15 @@ function getStatusStyle(status) {
 
 function HistoryRow({ entry, isLast, onOpen, onRestart, onDelete, isDeleting }) {
   const statusStyle = getStatusStyle(entry.status);
+  const canRestart = entry.status === "failed" || entry.status === "canceled";
+  const restartLabel =
+    entry.status === "canceled" && entry.restartCreditCost === 1 ? "Resume - 1 credit" : "Restart";
+  const canceledStageCopy =
+    entry.canceledAtStage === "summary"
+      ? "Resume will continue from the summary step and charge 1 credit."
+      : entry.canceledAtStage === "competitors"
+        ? "Resume will continue the missing competitor work and final summary for 1 credit."
+        : null;
 
   return (
     <Box
@@ -113,57 +122,64 @@ function HistoryRow({ entry, isLast, onOpen, onRestart, onDelete, isDeleting }) 
         </HStack>
 
         <HStack gap={2} flexWrap="wrap" justify="space-between">
-          <HStack gap={2} flexWrap="wrap">
-            <HStack
-              gap={1.5}
-              bg="#f8fafc"
-              borderWidth="1px"
-              borderColor="#e2e8f0"
-              borderRadius="20px"
-              px={2.5}
-              py={1}
-            >
-              <BarChart2 size={11} color="#6366f1" strokeWidth={2} />
-              <Text fontSize="11px" fontWeight="600" color="#374151">
-                {entry.competitorCount} competitors
-              </Text>
-            </HStack>
-
-            <HStack
-              gap={1}
-              bg={statusStyle.bg}
-              borderWidth="1px"
-              borderColor={statusStyle.borderColor}
-              borderRadius="20px"
-              px={2.5}
-              py={1}
-            >
-              <Box w="5px" h="5px" borderRadius="50%" bg={statusStyle.dot} />
-              <Text fontSize="11px" fontWeight="600" color={statusStyle.color}>
-                {statusStyle.label}
-              </Text>
-            </HStack>
-
-            {entry.status === "failed" && (
-              <Button
-                size="xs"
-                variant="outline"
-                h="30px"
+          <VStack align="start" gap={1}>
+            <HStack gap={2} flexWrap="wrap">
+              <HStack
+                gap={1.5}
+                bg="#f8fafc"
+                borderWidth="1px"
+                borderColor="#e2e8f0"
+                borderRadius="20px"
                 px={2.5}
-                borderRadius="8px"
-                borderColor="#fecaca"
-                color="#b91c1c"
-                bg="white"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  onRestart(entry);
-                }}
+                py={1}
               >
-                <RefreshCcw size={12} />
-                <Text ml={1}>Restart</Text>
-              </Button>
-            )}
-          </HStack>
+                <BarChart2 size={11} color="#6366f1" strokeWidth={2} />
+                <Text fontSize="11px" fontWeight="600" color="#374151">
+                  {entry.competitorCount} competitors
+                </Text>
+              </HStack>
+
+              <HStack
+                gap={1}
+                bg={statusStyle.bg}
+                borderWidth="1px"
+                borderColor={statusStyle.borderColor}
+                borderRadius="20px"
+                px={2.5}
+                py={1}
+              >
+                <Box w="5px" h="5px" borderRadius="50%" bg={statusStyle.dot} />
+                <Text fontSize="11px" fontWeight="600" color={statusStyle.color}>
+                  {statusStyle.label}
+                </Text>
+              </HStack>
+
+              {canRestart && (
+                <Button
+                  size="xs"
+                  variant="outline"
+                  h="30px"
+                  px={2.5}
+                  borderRadius="8px"
+                  borderColor="#fecaca"
+                  color="#b91c1c"
+                  bg="white"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    onRestart(entry);
+                  }}
+                >
+                  <RefreshCcw size={12} />
+                  <Text ml={1}>{restartLabel}</Text>
+                </Button>
+              )}
+            </HStack>
+            {entry.status === "canceled" && canceledStageCopy ? (
+              <Text fontSize="11px" color="#64748b">
+                {canceledStageCopy}
+              </Text>
+            ) : null}
+          </VStack>
 
           <Button
             size="xs"
@@ -266,22 +282,6 @@ export function AnalysisHistory({
             </Box>
           )}
         </HStack>
-        {history.length > 0 && (
-          <Button
-            variant="ghost"
-            size="xs"
-            fontSize="11px"
-            fontWeight="500"
-            color="#94a3b8"
-            borderRadius="6px"
-            h="24px"
-            px={2}
-            _hover={{ bg: "#fef2f2", color: "#dc2626" }}
-            onClick={onClear}
-          >
-            Clear all
-          </Button>
-        )}
       </HStack>
 
       {isLoading && history.length === 0 ? (

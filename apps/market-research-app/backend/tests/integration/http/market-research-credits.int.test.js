@@ -41,6 +41,22 @@ describe("market research credits integration", () => {
     expect(response.body.subscription.creditsRemaining).toBe(1);
   });
 
+  it("rejects obviously inappropriate prompts before queuing analysis", async () => {
+    const ctx = await createContext();
+    const auth = await ctx.createAuth("validation-local");
+    const reportId = "12121212-1212-4212-8212-121212121212";
+
+    const response = await ctx.request(ctx.app)
+      .post(`/api/market-research/${reportId}/analyze`)
+      .set("Cookie", auth.cookieHeader)
+      .set("x-csrf-token", auth.csrfToken)
+      .send({ idea: "Sex and drugs" });
+
+    expect(response.status).toBe(422);
+    expect(response.body.rejectionReason).toBe("INAPPROPRIATE");
+    expect(ctx.queuedInitialTasks).toHaveLength(0);
+  });
+
   it("blocks analyze when existing active sessions reserve the remaining credits", async () => {
     const ctx = await createContext();
     const auth = await ctx.createAuth("credits-reserved");
@@ -178,5 +194,110 @@ describe("market research credits integration", () => {
     const authMe = await ctx.request(ctx.app).get("/api/auth/me").set("Cookie", `jwt=${auth.jwt}`);
     expect(authMe.status).toBe(200);
     expect(authMe.body.user.creditsRemaining).toBe(3);
+  });
+
+  it("resumes a canceled paid run with one remaining credit and only queues missing work", async () => {
+    const ctx = await createContext();
+    const auth = await ctx.createAuth("credits-resume");
+    const reportId = "66666666-6666-4666-8666-666666666666";
+    const idea = "AI bookkeeping for ecommerce brands";
+
+    await ctx.subscriptionRepository.upsertSubscription(auth.userId, {
+      plan: "free",
+      status: "active",
+      creditsUsed: 3,
+      creditsTotal: 4,
+      creditEvents: [],
+    });
+
+    await ctx.marketResearchRepository.upsertSession(
+      reportId,
+      idea,
+      {
+        status: "canceled",
+        numCompetitors: 2,
+        canceled_at_stage: "competitors",
+        credits: {
+          competitors: { charged: true, amount: 1 },
+          summary: { charged: false },
+        },
+      },
+      auth.userId,
+    );
+    await ctx.marketResearchRepository.saveReport(reportId, {
+      idea,
+      competitors: [
+        { id: "comp-a", name: "Comp A", url: "https://a.test", description: "Competitor A" },
+        { id: "comp-b", name: "Comp B", url: "https://b.test", description: "Competitor B" },
+      ],
+    });
+    await ctx.marketResearchRepository.saveCompetitorTasks(reportId, [
+      { taskId: "task-comp-a", competitorId: "comp-a" },
+      { taskId: "task-comp-b", competitorId: "comp-b" },
+    ]);
+    await ctx.marketResearchRepository.saveCompetitorProfile(reportId, "comp-a", {
+      id: "comp-a",
+      name: "Comp A",
+      url: "https://a.test",
+    });
+
+    const response = await ctx.request(ctx.app)
+      .post(`/api/market-research/${reportId}/analyze`)
+      .set("Cookie", auth.cookieHeader)
+      .set("x-csrf-token", auth.csrfToken)
+      .send({ idea });
+
+    expect(response.status).toBe(201);
+    expect(response.body.mode).toBe("resume");
+    expect(response.body.requiredCredits).toBe(1);
+    expect(ctx.queuedInitialTasks).toHaveLength(0);
+    expect(ctx.queuedCompetitorTasks).toHaveLength(1);
+    expect(ctx.queuedCompetitorTasks[0]).toMatchObject({
+      sessionId: reportId,
+      competitorId: "comp-b",
+      competitorName: "Comp B",
+    });
+    expect(ctx.queuedSummaryTasks).toHaveLength(1);
+    expect(ctx.queuedSummaryTasks[0].dependsOn).toEqual(["task-competitor-1"]);
+  });
+
+  it("reports found competitors for canceled analyses in history", async () => {
+    const ctx = await createContext();
+    const auth = await ctx.createAuth("history-canceled");
+    const reportId = "77777777-7777-4777-8777-777777777777";
+
+    await ctx.marketResearchRepository.upsertSession(
+      reportId,
+      "AI CRM for solo consultants",
+      {
+        status: "canceled",
+        canceled_at_stage: "summary",
+      },
+      auth.userId,
+    );
+    await ctx.marketResearchRepository.saveReport(reportId, {
+      competitors: [
+        { id: "comp-a", name: "Comp A", url: "https://a.test" },
+        { id: "comp-b", name: "Comp B", url: "https://b.test" },
+      ],
+    });
+    await ctx.marketResearchRepository.saveCompetitorProfile(reportId, "comp-a", {
+      id: "comp-a",
+      name: "Comp A",
+      url: "https://a.test",
+    });
+
+    const response = await ctx.request(ctx.app)
+      .get("/api/market-research")
+      .set("Cookie", `jwt=${auth.jwt}`);
+
+    expect(response.status).toBe(200);
+    expect(response.body.history).toHaveLength(1);
+    expect(response.body.history[0]).toMatchObject({
+      id: reportId,
+      status: "canceled",
+      competitorCount: 1,
+      canceledAtStage: "summary",
+    });
   });
 });

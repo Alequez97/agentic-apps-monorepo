@@ -3,17 +3,41 @@ import { useMarketResearchStore } from "../../store/useMarketResearchStore";
 import { CompetitorLogo } from "./CompetitorLogo";
 import { CompetitorStatusBadge } from "./CompetitorStatusBadge";
 
+function CompetitorMetaRow({ label, value, tone = "#0f172a", suffix = null }) {
+  return (
+    <VStack align="start" gap={0.5} w="full">
+      <Text
+        fontSize="9px"
+        fontWeight="600"
+        color="#94a3b8"
+        textTransform="uppercase"
+        letterSpacing="0.05em"
+      >
+        {label}
+      </Text>
+      <Text fontSize="13px" fontWeight="700" color={tone} lineHeight="1.45" whiteSpace="normal">
+        {value}
+        {suffix ? (
+          <Text as="span" fontSize="10px" fontWeight="400" color="#94a3b8" ml={0.5}>
+            {suffix}
+          </Text>
+        ) : null}
+      </Text>
+    </VStack>
+  );
+}
+
 function CompetitorCardDone({ competitor }) {
   return (
-    <VStack align="start" gap={3} w="full">
-      <HStack justify="space-between" w="full">
-        <HStack gap={2}>
+    <VStack align="start" gap={3} w="full" h="full">
+      <HStack justify="space-between" w="full" align="start">
+        <HStack gap={2} minW={0} align="start">
           <CompetitorLogo competitor={competitor} />
-          <VStack align="start" gap={0}>
-            <Text fontSize="13px" fontWeight="700" color="#0f172a">
+          <VStack align="start" gap={0} minW={0}>
+            <Text fontSize="13px" fontWeight="700" color="#0f172a" lineHeight="1.35">
               {competitor.name}
             </Text>
-            <Text fontSize="10px" color="#94a3b8">
+            <Text fontSize="10px" color="#94a3b8" noOfLines={1}>
               {competitor.url}
             </Text>
           </VStack>
@@ -44,60 +68,30 @@ function CompetitorCardDone({ competitor }) {
         ))}
       </HStack>
 
-      <HStack justify="space-between" w="full" pt={1}>
-        <VStack align="start" gap={0.5}>
-          <Text
-            fontSize="9px"
-            fontWeight="600"
-            color="#94a3b8"
-            textTransform="uppercase"
-            letterSpacing="0.05em"
-          >
-            Pricing
-          </Text>
-          <Text fontSize="13px" fontWeight="700" color="#16a34a">
-            {competitor.pricing}
-            <Text
-              as="span"
-              fontSize="10px"
-              fontWeight="400"
-              color="#94a3b8"
-              ml={0.5}
-            >
-              {competitor.pricingPeriod}
-            </Text>
-          </Text>
-        </VStack>
-        <VStack align="end" gap={0.5}>
-          <Text
-            fontSize="9px"
-            fontWeight="600"
-            color="#94a3b8"
-            textTransform="uppercase"
-            letterSpacing="0.05em"
-          >
-            Customers
-          </Text>
-          <Text fontSize="13px" fontWeight="700" color="#0f172a">
-            {competitor.customers}
-          </Text>
-        </VStack>
-      </HStack>
+      <VStack align="start" gap={2.5} w="full" mt="auto" pt={1}>
+        <CompetitorMetaRow label="Customers" value={competitor.customers} />
+        <CompetitorMetaRow
+          label="Pricing"
+          value={competitor.pricing}
+          suffix={competitor.pricingPeriod}
+          tone="#16a34a"
+        />
+      </VStack>
     </VStack>
   );
 }
 
 function CompetitorCardAnalyzing({ competitor }) {
   return (
-    <VStack align="start" gap={3} w="full">
-      <HStack justify="space-between" w="full">
-        <HStack gap={2}>
+    <VStack align="start" gap={3} w="full" h="full">
+      <HStack justify="space-between" w="full" align="start">
+        <HStack gap={2} minW={0} align="start">
           <CompetitorLogo competitor={competitor} />
-          <VStack align="start" gap={0}>
+          <VStack align="start" gap={0} minW={0}>
             <Text fontSize="13px" fontWeight="700" color="#0f172a">
               {competitor.name}
             </Text>
-            <Text fontSize="10px" color="#94a3b8">
+            <Text fontSize="10px" color="#94a3b8" noOfLines={1}>
               {competitor.url}
             </Text>
           </VStack>
@@ -116,25 +110,25 @@ function CompetitorCardAnalyzing({ competitor }) {
         <Skeleton h="20px" w="60px" borderRadius="5px" />
       </HStack>
 
-      <HStack justify="space-between" w="full" pt={1}>
-        <Skeleton h="28px" w="80px" borderRadius="5px" />
-        <Skeleton h="28px" w="80px" borderRadius="5px" />
-      </HStack>
+      <VStack align="start" gap={2.5} w="full" mt="auto" pt={1}>
+        <Skeleton h="30px" w="full" borderRadius="5px" />
+        <Skeleton h="30px" w="full" borderRadius="5px" />
+      </VStack>
     </VStack>
   );
 }
 
 function CompetitorCardQueued({ competitor }) {
   return (
-    <VStack align="start" gap={3} w="full">
-      <HStack justify="space-between" w="full">
-        <HStack gap={2}>
+    <VStack align="start" gap={3} w="full" h="full">
+      <HStack justify="space-between" w="full" align="start">
+        <HStack gap={2} minW={0} align="start">
           <CompetitorLogo competitor={competitor} />
-          <VStack align="start" gap={0}>
+          <VStack align="start" gap={0} minW={0}>
             <Text fontSize="13px" fontWeight="700" color="#0f172a">
               {competitor.name}
             </Text>
-            <Text fontSize="10px" color="#94a3b8">
+            <Text fontSize="10px" color="#94a3b8" noOfLines={1}>
               {competitor.url}
             </Text>
           </VStack>
@@ -153,10 +147,10 @@ function CompetitorCardQueued({ competitor }) {
         <Skeleton h="20px" w="54px" borderRadius="5px" />
       </HStack>
 
-      <HStack justify="space-between" w="full" pt={1}>
-        <Skeleton h="28px" w="80px" borderRadius="5px" />
-        <Skeleton h="28px" w="80px" borderRadius="5px" />
-      </HStack>
+      <VStack align="start" gap={2.5} w="full" mt="auto" pt={1}>
+        <Skeleton h="30px" w="full" borderRadius="5px" />
+        <Skeleton h="30px" w="full" borderRadius="5px" />
+      </VStack>
     </VStack>
   );
 }
@@ -173,7 +167,9 @@ export function CompetitorCard({ competitor }) {
       borderWidth="1px"
       borderColor={isAnalyzing ? "#bfdbfe" : isDone ? "#e2e8f0" : "#f1f5f9"}
       p={4}
-      minH="208px"
+      h="100%"
+      minH="260px"
+      display="flex"
       transition="all 0.2s"
       boxShadow={isAnalyzing ? "0 0 0 3px rgba(59,130,246,.08)" : "none"}
       cursor={isDone ? "pointer" : "default"}

@@ -47,12 +47,17 @@ export async function createIntegrationTestContext() {
   const subscriptionService = createSubscriptionService({ subscriptionRepository });
 
   const queuedInitialTasks = [];
+  const queuedCompetitorTasks = [];
   const queuedSummaryTasks = [];
 
   const taskQueue = {
     async queueMarketResearchInitialTask(params) {
       queuedInitialTasks.push(params);
       return { id: `task-initial-${queuedInitialTasks.length}`, params };
+    },
+    async queueMarketResearchCompetitorTask(params) {
+      queuedCompetitorTasks.push(params);
+      return { id: `task-competitor-${queuedCompetitorTasks.length}`, params };
     },
     async queueMarketResearchSummaryTask(params) {
       queuedSummaryTasks.push(params);
@@ -149,6 +154,7 @@ export async function createIntegrationTestContext() {
     subscriptionService,
     userRepository,
     queuedInitialTasks,
+    queuedCompetitorTasks,
     queuedSummaryTasks,
     createAuth,
     seedUser,

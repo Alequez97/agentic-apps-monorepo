@@ -302,4 +302,17 @@ export const useSocketStore = create((set, get) => ({
       handleMarketResearchLog(data, "Summary", "#0f766e"),
     );
   },
+
+  reconnectSocket: () => {
+    const socket = get().socket;
+    if (!socket) {
+      get().initSocket();
+      return;
+    }
+
+    if (socket.connected) {
+      socket.disconnect();
+    }
+    socket.connect();
+  },
 }));

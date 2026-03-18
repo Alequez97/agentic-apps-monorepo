@@ -15,25 +15,25 @@ const PLATFORM_FEATURES = [
     icon: Code2,
     title: "AI Codebase Analyzer",
     description:
-      "Deep static analysis powered by Claude — finds logic bugs, security issues, and dead code across your entire repo.",
+      "Deep static analysis powered by Claude. It finds logic bugs, security issues, and dead code across your repo.",
   },
   {
     icon: Zap,
     title: "Auto-Fix Engine",
     description:
-      "One-click AI fixes with full context. No copy-pasting from ChatGPT — changes land directly in your codebase.",
+      "One-click AI fixes with full context. Changes land directly in your codebase without copy-pasting.",
   },
   {
     icon: GitBranch,
     title: "PR-level Review",
     description:
-      "Every pull request gets an AI reviewer that understands your architecture and flags real problems, not noise.",
+      "Every pull request gets an AI reviewer that understands your architecture and flags real problems.",
   },
   {
     icon: Wrench,
     title: "Ongoing Maintenance",
     description:
-      "Continuous refactor suggestions, dependency upgrades, and tech-debt tracking — your codebase stays healthy automatically.",
+      "Continuous refactor suggestions, dependency upgrades, and tech-debt tracking keep the codebase healthy.",
   },
 ];
 
@@ -41,7 +41,7 @@ export function StartBuildingModal({ open, onClose }) {
   return (
     <Dialog.Root
       open={open}
-      onOpenChange={({ open }) => !open && onClose()}
+      onOpenChange={({ open: isOpen }) => !isOpen && onClose()}
       size="lg"
       motionPreset="slide-in-bottom"
     >
@@ -49,12 +49,7 @@ export function StartBuildingModal({ open, onClose }) {
         <Dialog.Backdrop bg="blackAlpha.600" backdropFilter="blur(4px)" />
         <Dialog.Positioner>
           <Dialog.Content borderRadius="20px" overflow="hidden" mx={4}>
-            {/* Header */}
-            <Box
-              bg="linear-gradient(135deg, #6366f1 0%, #7c3aed 100%)"
-              px={7}
-              py={6}
-            >
+            <Box bg="linear-gradient(135deg, #6366f1 0%, #7c3aed 100%)" px={7} py={6}>
               <HStack justify="space-between" align="start">
                 <Box>
                   <Text
@@ -64,15 +59,10 @@ export function StartBuildingModal({ open, onClose }) {
                     letterSpacing="-0.02em"
                     mb={1}
                   >
-                    Build it with JFS
+                    Build the product
                   </Text>
-                  <Text
-                    fontSize="13px"
-                    color="rgba(255,255,255,0.75)"
-                    fontWeight="500"
-                  >
-                    The AI platform that builds, maintains, and analyzes your
-                    code
+                  <Text fontSize="13px" color="rgba(255,255,255,0.75)" fontWeight="500">
+                    The agentic workflow for building, maintaining, and reviewing your code
                   </Text>
                 </Box>
                 <CloseButton
@@ -85,11 +75,10 @@ export function StartBuildingModal({ open, onClose }) {
               </HStack>
             </Box>
 
-            {/* Body */}
             <Dialog.Body px={7} py={6} bg="white">
               <Text fontSize="13px" color="#64748b" mb={5} lineHeight="1.6">
-                Your market research shows a clear gap. JFS gives you the exact
-                AI-powered tools to fill it — from day one to production.
+                Your market research shows a clear gap. These build workflows help you move from
+                idea to production without switching tools.
               </Text>
 
               <VStack gap={4} align="stretch">
@@ -109,12 +98,7 @@ export function StartBuildingModal({ open, onClose }) {
                       <Icon size={17} strokeWidth={2} />
                     </Box>
                     <Box>
-                      <Text
-                        fontSize="13px"
-                        fontWeight="700"
-                        color="#0f172a"
-                        mb={0.5}
-                      >
+                      <Text fontSize="13px" fontWeight="700" color="#0f172a" mb={0.5}>
                         {title}
                       </Text>
                       <Text fontSize="12px" color="#64748b" lineHeight="1.55">
@@ -126,14 +110,7 @@ export function StartBuildingModal({ open, onClose }) {
               </VStack>
             </Dialog.Body>
 
-            {/* Footer */}
-            <Box
-              px={7}
-              py={5}
-              borderTopWidth="1px"
-              borderColor="#f1f5f9"
-              bg="white"
-            >
+            <Box px={7} py={5} borderTopWidth="1px" borderColor="#f1f5f9" bg="white">
               <Button
                 w="full"
                 h="44px"
@@ -145,10 +122,10 @@ export function StartBuildingModal({ open, onClose }) {
                 _hover={{ opacity: 0.9 }}
                 mb={2.5}
               >
-                Get early access →
+                {"Get early access ->"}
               </Button>
               <Text textAlign="center" fontSize="11px" color="#94a3b8">
-                Free to start · No credit card required
+                Free to start. No credit card required.
               </Text>
             </Box>
           </Dialog.Content>

@@ -157,6 +157,7 @@ export function CompetitorsGrid() {
               md: "repeat(2, 1fr)",
               xl: "repeat(3, 1fr)",
             }}
+            autoRows="1fr"
             gap={4}
           >
             <SkeletonCard delay={0} />
@@ -196,6 +197,7 @@ export function CompetitorsGrid() {
         md: "repeat(2, 1fr)",
         xl: "repeat(3, 1fr)",
       }}
+      autoRows="1fr"
       gap={4}
     >
       {competitors.map((competitor) => (
