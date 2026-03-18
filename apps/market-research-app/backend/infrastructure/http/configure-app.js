@@ -6,6 +6,7 @@ import express from "express";
 import { createAuthRouter } from "../../routes/auth.js";
 import { createAdminRouter } from "../../routes/admin.js";
 import { createMarketResearchRouter } from "../../routes/market-research.js";
+import { createTasksRouter } from "../../routes/tasks.js";
 import { requireCsrf } from "../../middleware/csrf.js";
 import * as logger from "../../utils/logger.js";
 import { registerSystemRoutes } from "./register-system-routes.js";
@@ -64,7 +65,11 @@ export function configureApp({
     }),
   );
   app.use("/api/auth", createAuthRouter({ userRepository, subscriptionService }));
-  app.use("/api/admin", createAdminRouter({ userRepository, marketResearchRepository, subscriptionService }));
+  app.use(
+    "/api/admin",
+    createAdminRouter({ userRepository, marketResearchRepository, subscriptionService }),
+  );
+  app.use("/api/tasks", createTasksRouter({ orchestrator }));
 
   registerSystemRoutes({ app, orchestrator });
 

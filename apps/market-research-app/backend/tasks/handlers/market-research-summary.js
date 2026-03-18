@@ -11,9 +11,7 @@ export async function marketResearchSummaryHandler(
 ) {
   const { sessionId, idea, billingRunId } = task.params || {};
 
-  const competitorTasks = await marketResearchRepository.getCompetitorTasks(
-    sessionId,
-  );
+  const competitorTasks = await marketResearchRepository.getCompetitorTasks(sessionId);
   if (!Array.isArray(competitorTasks) || competitorTasks.length === 0) {
     throw new Error("competitor-tasks.json is empty or invalid");
   }
@@ -48,23 +46,42 @@ export async function marketResearchSummaryHandler(
       ]);
 
       if (!report) throw new Error("report.json is empty or invalid");
-      if (!opportunity) throw new Error("opportunity.json is empty or invalid");
+      if (
+        !opportunity ||
+        typeof opportunity !== "object" ||
+        Object.keys(opportunity).length === 0
+      ) {
+        throw new Error("opportunity is empty or invalid");
+      }
 
-      const competitorMap = new Map(
-        competitors.map((competitor) => [competitor.id, competitor]),
+      // Load profiles keyed by plan IDs — handles broken/empty competitorTasks entries
+      const plannedIds = (report.competitors || []).map((c) => c.id).filter(Boolean);
+      const allProfiles = await marketResearchRepository.getCompetitorProfiles(
+        sessionId,
+        plannedIds,
       );
+      const profileById = new Map(allProfiles.map((c) => [c.id, c]));
+
+      // Validate every planned competitor has a real (non-stub) profile BEFORE charging
+      const incompleteIds = plannedIds.filter((id) => {
+        const p = profileById.get(id);
+        return !p || !p.description;
+      });
+      if (incompleteIds.length > 0) {
+        throw new Error(
+          `Competitor analysis incomplete for: ${incompleteIds.join(", ")}. Re-run to complete missing profiles.`,
+        );
+      }
 
       const mergedCompetitors = (report.competitors || []).map((stub) => {
-        const full = competitorMap.get(stub.id);
+        const full = profileById.get(stub.id);
         return full ? { ...stub, ...full } : stub;
       });
 
-      const mergedIds = new Set(
-        mergedCompetitors.map((competitor) => competitor.id),
-      );
-      for (const competitor of competitors) {
-        if (!mergedIds.has(competitor.id)) {
-          mergedCompetitors.push(competitor);
+      const mergedIds = new Set(mergedCompetitors.map((competitor) => competitor.id));
+      for (const profile of allProfiles) {
+        if (!mergedIds.has(profile.id)) {
+          mergedCompetitors.push(profile);
         }
       }
 
@@ -104,10 +121,7 @@ export async function marketResearchSummaryHandler(
         );
       }
 
-      await marketResearchRepository.markSessionComplete(
-        sessionId,
-        mergedCompetitors.length,
-      );
+      await marketResearchRepository.markSessionComplete(sessionId, mergedCompetitors.length);
 
       taskEventPublisher.publish(APP_EVENTS.MARKET_RESEARCH_REPORT_READY, {
         ownerId: task.ownerId,

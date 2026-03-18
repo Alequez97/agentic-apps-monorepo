@@ -6,12 +6,7 @@ export const getAnalysisHistory = (reportId) =>
 export const saveMarketResearchReport = (reportId, idea, state) =>
   client.put(`/market-research/${reportId}`, { idea, state });
 
-export const requestMarketResearchAnalysis = (
-  reportId,
-  idea,
-  numCompetitors,
-  regions,
-) =>
+export const requestMarketResearchAnalysis = (reportId, idea, numCompetitors, regions) =>
   client.post(`/market-research/${reportId}/analyze`, {
     idea,
     numCompetitors,
@@ -38,3 +33,10 @@ export const cancelMarketResearchAnalysis = (reportId) =>
 
 export const deleteMarketResearchReport = (reportId) =>
   client.delete(`/market-research/${reportId}`);
+
+// Task-level operations
+export const retryTask = (taskId) => client.post(`/tasks/${taskId}/retry`);
+
+export const cancelTask = (taskId) => client.post(`/tasks/${taskId}/cancel`);
+
+export const getTaskStatus = (taskId) => client.get(`/tasks/${taskId}`);

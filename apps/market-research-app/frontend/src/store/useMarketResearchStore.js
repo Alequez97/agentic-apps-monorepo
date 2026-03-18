@@ -7,6 +7,7 @@ import {
   getCompetitorDetails,
   restartMarketResearchAnalysis,
   cancelMarketResearchAnalysis,
+  retryTask,
 } from "../api/market-research";
 import { useAuthStore } from "./useAuthStore";
 import { useProfileStore } from "./useProfileStore";
@@ -133,7 +134,12 @@ export const useMarketResearchStore = create(
         });
 
         try {
-          const response = await requestMarketResearchAnalysis(reportId, idea, numCompetitors, regions);
+          const response = await requestMarketResearchAnalysis(
+            reportId,
+            idea,
+            numCompetitors,
+            regions,
+          );
           useAuthStore.getState().updateUserCredits(response?.data?.subscription ?? null);
           set({ isValidating: false, isAnalyzing: true });
           useProfileStore.getState().upsertAnalysis({
@@ -227,7 +233,10 @@ export const useMarketResearchStore = create(
           });
           return true;
         } catch (err) {
-          if (err?.response?.status === 402 && err?.response?.data?.code === "INSUFFICIENT_CREDITS") {
+          if (
+            err?.response?.status === 402 &&
+            err?.response?.data?.code === "INSUFFICIENT_CREDITS"
+          ) {
             useAuthStore.getState().updateUserCredits(err.response.data?.subscription ?? null);
             set({
               isAnalyzing: false,
@@ -424,6 +433,7 @@ export const useMarketResearchStore = create(
         if (!reportId) return;
         const existing = competitors.find((c) => c.id === competitorId);
         if (existing?.details) return;
+        if (existing?.loadFailed) return;
         try {
           const response = await getCompetitorDetails(reportId, competitorId);
           if (response?.status === 202 && response?.data?.status === "retrying") {
@@ -436,7 +446,14 @@ export const useMarketResearchStore = create(
             return;
           }
           const profile = response?.data?.competitor;
-          if (!profile) return;
+          if (!profile || !profile.description) {
+            set((state) => ({
+              competitors: state.competitors.map((c) =>
+                c.id === competitorId ? { ...c, loadFailed: true } : c,
+              ),
+            }));
+            return;
+          }
           set((state) => ({
             competitors: state.competitors.map((c) =>
               c.id === competitorId ? { ...c, ...profile, status: c.status } : c,
@@ -444,7 +461,34 @@ export const useMarketResearchStore = create(
           }));
           get()._syncSummaryStatus();
         } catch {
-          // silently ignore
+          set((state) => ({
+            competitors: state.competitors.map((c) =>
+              c.id === competitorId ? { ...c, loadFailed: true } : c,
+            ),
+          }));
+        }
+      },
+
+      retryCompetitor: async (competitorId) => {
+        const { competitors } = get();
+        const competitor = competitors.find((c) => c.id === competitorId);
+        if (!competitor || !competitor.taskId) {
+          console.error(`Cannot retry competitor ${competitorId}: no taskId found`);
+          return false;
+        }
+
+        try {
+          await retryTask(competitor.taskId);
+          set((state) => ({
+            competitors: state.competitors.map((c) =>
+              c.id === competitorId ? { ...c, status: "analyzing", loadFailed: false } : c,
+            ),
+          }));
+          get()._syncSummaryStatus();
+          return true;
+        } catch (error) {
+          console.error(`Failed to retry competitor ${competitorId}:`, error);
+          return false;
         }
       },
 

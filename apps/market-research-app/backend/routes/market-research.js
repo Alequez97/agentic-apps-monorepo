@@ -73,18 +73,25 @@ function getRequiredCreditsForRestart(session, snapshot, taskQueue) {
   const competitorCharged = session?.state?.credits?.competitors?.charged === true;
   const summaryCharged = session?.state?.credits?.summary?.charged === true;
   const hasSavedPlan = snapshot.reportCompetitors.length > 0;
-  const hasCompetitorQueueSupport = typeof taskQueue?.queueMarketResearchCompetitorTask === "function";
-  const foundIds = new Set(snapshot.competitors.map((entry) => entry?.id).filter(Boolean));
+  const hasCompetitorQueueSupport =
+    typeof taskQueue?.queueMarketResearchCompetitorTask === "function";
+  // Only count profiles that have real data — stubs like {id: "klue"} are treated as missing
+  const foundIds = new Set(
+    snapshot.competitors
+      .filter((entry) => entry?.description)
+      .map((entry) => entry?.id)
+      .filter(Boolean),
+  );
   const missingCompetitors = snapshot.reportCompetitors.filter(
     (entry) => entry?.id && !foundIds.has(entry.id),
   );
   const canResumeMissingCompetitors =
     missingCompetitors.length === 0 ||
-    (hasCompetitorQueueSupport &&
-      missingCompetitors.every((entry) => entry?.name && entry?.url));
+    (hasCompetitorQueueSupport && missingCompetitors.every((entry) => entry?.name && entry?.url));
 
+  const isResumable = session?.state?.status === "canceled" || session?.state?.status === "failed";
   if (
-    session?.state?.status === "canceled" &&
+    isResumable &&
     competitorCharged &&
     !summaryCharged &&
     hasSavedPlan &&
@@ -97,10 +104,16 @@ function getRequiredCreditsForRestart(session, snapshot, taskQueue) {
 }
 
 function inferCanceledAtStage(snapshot, liveTasks = []) {
-  const hasSummaryTask = liveTasks.some((task) => task?.type === TASK_TYPES.MARKET_RESEARCH_SUMMARY);
-  const hasCompetitorTasks = snapshot.competitorTasks.length > 0 || snapshot.reportCompetitors.length > 0;
+  const hasSummaryTask = liveTasks.some(
+    (task) => task?.type === TASK_TYPES.MARKET_RESEARCH_SUMMARY,
+  );
+  const hasCompetitorTasks =
+    snapshot.competitorTasks.length > 0 || snapshot.reportCompetitors.length > 0;
 
-  if (hasSummaryTask || (hasCompetitorTasks && snapshot.foundCompetitorCount >= snapshot.competitorIds.length)) {
+  if (
+    hasSummaryTask ||
+    (hasCompetitorTasks && snapshot.foundCompetitorCount >= snapshot.competitorIds.length)
+  ) {
     return "summary";
   }
 
@@ -119,7 +132,13 @@ async function queueResumedMarketResearch({
   billingRunId,
   snapshot,
 }) {
-  const foundIds = new Set(snapshot.competitors.map((entry) => entry?.id).filter(Boolean));
+  // Only treat profiles with real data as found — stubs are re-queued
+  const foundIds = new Set(
+    snapshot.competitors
+      .filter((entry) => entry?.description)
+      .map((entry) => entry?.id)
+      .filter(Boolean),
+  );
   const missingCompetitors = snapshot.reportCompetitors.filter(
     (entry) => entry?.id && !foundIds.has(entry.id),
   );
@@ -216,8 +235,7 @@ export function createMarketResearchRouter({
               };
             }),
           )
-        )
-          .sort((a, b) => b.completedAt - a.completedAt);
+        ).sort((a, b) => b.completedAt - a.completedAt);
 
         return res.json({ history });
       } catch (error) {
@@ -493,8 +511,7 @@ export function createMarketResearchRouter({
       }
 
       try {
-        const shouldResume =
-          requiredCredits === 1 && existingSnapshot.reportCompetitors.length > 0;
+        const shouldResume = requiredCredits === 1 && existingSnapshot.reportCompetitors.length > 0;
         const queued = shouldResume
           ? await queueResumedMarketResearch({
               taskQueue,

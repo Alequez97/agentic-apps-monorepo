@@ -1,15 +1,6 @@
-import {
-  Badge,
-  Box,
-  Button,
-  Grid,
-  HStack,
-  Spinner,
-  Text,
-  VStack,
-} from "@chakra-ui/react";
+import { Badge, Box, Button, Grid, HStack, Spinner, Text, VStack } from "@chakra-ui/react";
 import { useEffect } from "react";
-import { ArrowLeft, ExternalLink } from "lucide-react";
+import { AlertCircle, ArrowLeft, ExternalLink, RotateCw } from "lucide-react";
 import { useMarketResearchStore } from "../../store/useMarketResearchStore";
 import { CompetitorLogo } from "./CompetitorLogo";
 import { CompetitorFeaturesCard } from "./CompetitorFeaturesCard";
@@ -21,14 +12,7 @@ import { CompetitorSourcesCard } from "./CompetitorSourcesCard";
 
 function StatCard({ label, value }) {
   return (
-    <Box
-      bg="#f8fafc"
-      borderRadius="10px"
-      borderWidth="1px"
-      borderColor="#f1f5f9"
-      px={3.5}
-      py={3}
-    >
+    <Box bg="#f8fafc" borderRadius="10px" borderWidth="1px" borderColor="#f1f5f9" px={3.5} py={3}>
       <Text
         fontSize="9px"
         fontWeight="700"
@@ -52,35 +36,85 @@ function normalizeUrl(url) {
 }
 
 export function CompetitorDetails({ competitor, onBack }) {
-  const loadCompetitorDetails = useMarketResearchStore(
-    (s) => s.loadCompetitorDetails,
-  );
+  const loadCompetitorDetails = useMarketResearchStore((s) => s.loadCompetitorDetails);
+  const retryCompetitor = useMarketResearchStore((s) => s.retryCompetitor);
   const { details } = competitor;
 
   useEffect(() => {
-    if (!details) {
+    if (!details && !competitor.loadFailed && competitor.status !== "analyzing") {
       loadCompetitorDetails(competitor.id);
     }
-  }, [competitor.id, details, loadCompetitorDetails]);
+  }, [competitor.id, details, competitor.loadFailed, competitor.status, loadCompetitorDetails]);
+
+  const handleRetry = async () => {
+    await retryCompetitor(competitor.id);
+    // Store updates status to "analyzing", which triggers loading UI
+  };
+
+  const backButton = (
+    <Button
+      variant="ghost"
+      size="sm"
+      alignSelf="start"
+      fontSize="12px"
+      fontWeight="600"
+      color="#64748b"
+      px={2}
+      h="30px"
+      _hover={{ bg: "#f1f5f9", color: "#0f172a" }}
+      onClick={onBack}
+    >
+      <ArrowLeft size={13} style={{ marginRight: "6px" }} />
+      Competitors
+    </Button>
+  );
+
+  if (competitor.loadFailed) {
+    return (
+      <VStack align="stretch" gap={5}>
+        {backButton}
+        <Box
+          bg="white"
+          borderRadius="12px"
+          borderWidth="1px"
+          borderColor="#fecaca"
+          p={8}
+          display="flex"
+          flexDirection="column"
+          alignItems="center"
+          justifyContent="center"
+          gap={3}
+          textAlign="center"
+        >
+          <AlertCircle size={28} color="#ef4444" />
+          <Text fontSize="14px" fontWeight="700" color="#0f172a">
+            Analysis incomplete for {competitor.name}
+          </Text>
+          <Text fontSize="13px" color="#64748b" maxW="420px" mb={2}>
+            The detailed research for this competitor did not complete successfully. You can restart
+            the analysis at no extra charge.
+          </Text>
+          <Button
+            size="sm"
+            colorScheme="blue"
+            fontSize="12px"
+            fontWeight="600"
+            px={4}
+            h="32px"
+            isLoading={isRetrying}
+            loadingText="Restarting..."
+            onClick={handleRetry}
+            leftIcon={<RotateCw size={14} />}
+          >
+            Retry Analysis
+          </Button>
+        </Bo
+  }
 
   if (!details) {
     return (
       <VStack align="stretch" gap={5}>
-        <Button
-          variant="ghost"
-          size="sm"
-          alignSelf="start"
-          fontSize="12px"
-          fontWeight="600"
-          color="#64748b"
-          px={2}
-          h="30px"
-          _hover={{ bg: "#f1f5f9", color: "#0f172a" }}
-          onClick={onBack}
-        >
-          <ArrowLeft size={13} style={{ marginRight: "6px" }} />
-          Competitors
-        </Button>
+        {backButton}
         <Box
           bg="white"
           borderRadius="12px"
@@ -96,49 +130,25 @@ export function CompetitorDetails({ competitor, onBack }) {
           <Text fontSize="13px" color="#64748b">
             Loading {competitor.name} profile…
           </Text>
-        </Box>
+        </Bo{competitor.status === "analyzing"
+              ? `Analyzing ${competitor.name}…`
+              : `Loading ${competitor.name} profile…`}
       </VStack>
     );
   }
 
   return (
     <VStack align="stretch" gap={5}>
-      {/* Back link */}
-      <Button
-        variant="ghost"
-        size="sm"
-        alignSelf="start"
-        fontSize="12px"
-        fontWeight="600"
-        color="#64748b"
-        px={2}
-        h="30px"
-        _hover={{ bg: "#f1f5f9", color: "#0f172a" }}
-        onClick={onBack}
-      >
-        <ArrowLeft size={13} style={{ marginRight: "6px" }} />
-        Competitors
-      </Button>
+      {backButton}
 
       {/* Header card */}
-      <Box
-        bg="white"
-        borderRadius="12px"
-        borderWidth="1px"
-        borderColor="#e2e8f0"
-        p={5}
-      >
+      <Box bg="white" borderRadius="12px" borderWidth="1px" borderColor="#e2e8f0" p={5}>
         <HStack justify="space-between" align="start" mb={4}>
           <HStack gap={3}>
             <CompetitorLogo competitor={competitor} size={44} />
             <VStack align="start" gap={0.5}>
               <HStack gap={2}>
-                <Text
-                  fontSize="20px"
-                  fontWeight="800"
-                  color="#0f172a"
-                  letterSpacing="-0.025em"
-                >
+                <Text fontSize="20px" fontWeight="800" color="#0f172a" letterSpacing="-0.025em">
                   {competitor.name}
                 </Text>
                 <Badge
@@ -192,11 +202,7 @@ export function CompetitorDetails({ competitor, onBack }) {
           {competitor.description}
         </Text>
 
-        <Grid
-          templateColumns={{ base: "repeat(2, 1fr)", md: "repeat(4, 1fr)" }}
-          gap={3}
-          mb={4}
-        >
+        <Grid templateColumns={{ base: "repeat(2, 1fr)", md: "repeat(4, 1fr)" }} gap={3} mb={4}>
           <StatCard label="Customers" value={competitor.customers} />
           <StatCard label="Founded" value={details.founded} />
           <StatCard label="Country" value={details.country} />
@@ -225,9 +231,7 @@ export function CompetitorDetails({ competitor, onBack }) {
 
       <Grid templateColumns={{ base: "1fr", md: "1fr 1fr" }} gap={4}>
         <CompetitorFeaturesCard features={details.features} />
-        <CompetitorMissingFeaturesCard
-          missingFeatures={details.missingFeatures}
-        />
+        <CompetitorMissingFeaturesCard missingFeatures={details.missingFeatures} />
       </Grid>
 
       <CompetitorPricingPlans
