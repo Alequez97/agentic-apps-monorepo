@@ -1,7 +1,11 @@
 import { Box, HStack, Text, VStack } from "@chakra-ui/react";
 import { FileText } from "lucide-react";
+import { useAuthStore } from "../../store/useAuthStore";
 
 export function SignInNotice() {
+  const user = useAuthStore((s) => s.user);
+  if (user) return null;
+
   return (
     <Box
       bg="white"
@@ -23,9 +27,8 @@ export function SignInNotice() {
             Sign in before you run analysis
           </Text>
           <Text fontSize="11px" color="#64748b" lineHeight="1.6">
-            Google sign-in is required for every request. New accounts are
-            created on the free plan, so each report is tied to a real user
-            instead of an anonymous session.
+            Google sign-in is required for every request. New accounts are created on the free plan,
+            so each report is tied to a real user instead of an anonymous session.
           </Text>
         </VStack>
       </HStack>

@@ -65,5 +65,39 @@ export function createFileUserRepository({ dataDir }) {
         throw error;
       }
     },
+
+    async listUsers({ limit = null, skip = 0 } = {}) {
+      await ensureUsersDir();
+      let files;
+      try {
+        files = await fs.readdir(usersDir);
+      } catch {
+        return [];
+      }
+      const jsonFiles = files.filter((f) => f.endsWith(".json"));
+      const users = [];
+      for (const file of jsonFiles) {
+        const userId = file.replace(/\.json$/, "");
+        try {
+          const user = await tryReadJsonFile(path.join(usersDir, file), userId);
+          if (user) users.push(user);
+        } catch {
+          // skip unreadable files
+        }
+      }
+      users.sort((a, b) => (b.lastSeenAt || 0) - (a.lastSeenAt || 0));
+      const sliced = users.slice(skip);
+      return limit != null ? sliced.slice(0, limit) : sliced;
+    },
+
+    async countUsers() {
+      await ensureUsersDir();
+      try {
+        const files = await fs.readdir(usersDir);
+        return files.filter((f) => f.endsWith(".json")).length;
+      } catch {
+        return 0;
+      }
+    },
   };
 }

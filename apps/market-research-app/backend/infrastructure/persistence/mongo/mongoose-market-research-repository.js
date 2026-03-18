@@ -21,9 +21,7 @@ function createConnectionKey(uri, dbName) {
 
 async function getMongoConnection({ uri, dbName }) {
   if (!uri || !dbName) {
-    throw new Error(
-      "Mongo market research repository requires uri and dbName",
-    );
+    throw new Error("Mongo market research repository requires uri and dbName");
   }
 
   const key = createConnectionKey(uri, dbName);
@@ -247,8 +245,14 @@ export async function createMongoMarketResearchRepository({ uri, dbName }) {
       });
     },
 
-    async listSessions() {
-      return Session.find({}).sort({ createdAt: -1 }).lean();
+    async listSessions({ limit = null, skip = 0 } = {}) {
+      const q = Session.find({}).sort({ createdAt: -1 }).skip(skip);
+      if (limit != null) q.limit(limit);
+      return q.lean();
+    },
+
+    async countSessions() {
+      return Session.countDocuments({});
     },
 
     async getCompetitorTasks(sessionId) {
@@ -303,9 +307,7 @@ export async function createMongoMarketResearchRepository({ uri, dbName }) {
         competitorId: { $in: sanitizedIds },
       }).lean();
 
-      const byId = new Map(
-        records.map((record) => [record.competitorId, record.payload]),
-      );
+      const byId = new Map(records.map((record) => [record.competitorId, record.payload]));
       return sanitizedIds.map((id) => byId.get(id)).filter(Boolean);
     },
 

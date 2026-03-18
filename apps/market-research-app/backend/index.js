@@ -23,8 +23,8 @@ import { createAppRepositories } from "./infrastructure/persistence/create-app-r
 import { createSubscriptionService } from "./services/subscription.js";
 import { createSocketServer } from "./infrastructure/http/create-socket-server.js";
 import { registerTaskSocketBridge } from "./infrastructure/http/register-task-socket-bridge.js";
-import { configureApp } from "./infrastructure/http/configure-app.js";
 import { TASK_TYPES } from "./constants/task-types.js";
+import { createHttpApp } from "./app.js";
 
 const app = express();
 const httpServer = createServer(app);
@@ -125,7 +125,7 @@ taskEvents.on(TASK_EVENTS.FAILED, async ({ task, error }) => {
   }
 });
 
-configureApp({
+createHttpApp({
   app,
   isAllowedOrigin,
   taskQueue,

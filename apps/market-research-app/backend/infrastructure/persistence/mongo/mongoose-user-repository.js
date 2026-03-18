@@ -47,6 +47,7 @@ function getUserModel(connection) {
       picture: String,
       createdAt: { type: Number, required: true },
       lastSeenAt: { type: Number, required: true },
+      isAdmin: { type: Boolean, default: false },
     },
     {
       collection: "users",
@@ -107,6 +108,16 @@ export async function createMongoUserRepository({ uri, dbName }) {
     async getUser(userId) {
       assertValidUserId(userId);
       return User.findOne({ userId }).lean();
+    },
+
+    async listUsers({ limit = null, skip = 0 } = {}) {
+      const q = User.find({}).sort({ lastSeenAt: -1 }).skip(skip);
+      if (limit != null) q.limit(limit);
+      return q.lean();
+    },
+
+    async countUsers() {
+      return User.countDocuments({});
     },
   };
 }

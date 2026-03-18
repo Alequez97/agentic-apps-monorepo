@@ -25,6 +25,7 @@ export function createAuthRouter({ userRepository, subscriptionService }) {
       name: user.name,
       email: user.email,
       picture: user.picture,
+      isAdmin: !!user.isAdmin,
       plan: subscription?.plan ?? "free",
       creditsUsed: subscription?.creditsUsed ?? 0,
       creditsTotal: subscription?.creditsTotal ?? 0,

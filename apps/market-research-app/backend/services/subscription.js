@@ -192,5 +192,10 @@ export function createSubscriptionService({ subscriptionRepository }) {
         charge,
       };
     },
+
+    async getSubscriptionsForUsers(userIds) {
+      const subscriptions = await subscriptionRepository.getSubscriptionsByUserIds(userIds);
+      return subscriptions.map((s) => normalizeSubscription(s));
+    },
   };
 }

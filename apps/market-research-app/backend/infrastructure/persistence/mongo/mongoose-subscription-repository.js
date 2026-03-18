@@ -129,5 +129,10 @@ export async function createMongoSubscriptionRepository({ uri, dbName }) {
 
       return subscription;
     },
+
+    async getSubscriptionsByUserIds(userIds) {
+      if (!userIds || userIds.length === 0) return [];
+      return Subscription.find({ userId: { $in: userIds } }).lean();
+    },
   };
 }

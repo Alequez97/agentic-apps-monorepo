@@ -4,6 +4,7 @@ import cors from "cors";
 import cookieParser from "cookie-parser";
 import express from "express";
 import { createAuthRouter } from "../../routes/auth.js";
+import { createAdminRouter } from "../../routes/admin.js";
 import { createMarketResearchRouter } from "../../routes/market-research.js";
 import { requireCsrf } from "../../middleware/csrf.js";
 import * as logger from "../../utils/logger.js";
@@ -63,6 +64,7 @@ export function configureApp({
     }),
   );
   app.use("/api/auth", createAuthRouter({ userRepository, subscriptionService }));
+  app.use("/api/admin", createAdminRouter({ userRepository, marketResearchRepository, subscriptionService }));
 
   registerSystemRoutes({ app, orchestrator });
 

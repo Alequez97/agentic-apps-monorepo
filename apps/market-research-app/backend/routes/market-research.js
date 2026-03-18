@@ -30,6 +30,17 @@ async function requireOwnedReport(req, res, reportId, marketResearchRepository) 
   return reportSession;
 }
 
+function getReservedCreditsForSession(session) {
+  if (session?.state?.status !== "analyzing") {
+    return 0;
+  }
+
+  const competitorCharged = session?.state?.credits?.competitors?.charged === true;
+  const summaryCharged = session?.state?.credits?.summary?.charged === true;
+
+  return (competitorCharged ? 0 : 1) + (summaryCharged ? 0 : 1);
+}
+
 export function createMarketResearchRouter({
   taskQueue,
   marketResearchRepository,
@@ -123,7 +134,6 @@ export function createMarketResearchRouter({
       const { reportId } = req.params;
 
       try {
-        const subscription = await subscriptionService.getSubscription(req.userId);
         const reportSession = await requireOwnedReport(
           req,
           res,
@@ -270,12 +280,23 @@ export function createMarketResearchRouter({
         });
       }
 
+      const reservedCredits = (await marketResearchRepository.listSessions())
+        .filter((entry) => entry?.ownerId === req.userId && entry?.sessionId !== reportId)
+        .reduce((total, entry) => total + getReservedCreditsForSession(entry), 0);
+
       const creditCheck = await subscriptionService.canStartReport(req.userId);
-      if (!creditCheck.allowed) {
+      const availableCreditsAfterReservations =
+        (creditCheck.subscription?.creditsRemaining ?? 0) - reservedCredits;
+      if (
+        !creditCheck.allowed ||
+        availableCreditsAfterReservations < REQUIRED_REPORT_CREDITS
+      ) {
         return res.status(402).json({
           error: `At least ${REQUIRED_REPORT_CREDITS} credits are required to start a report`,
           code: "INSUFFICIENT_CREDITS",
           requiredCredits: REQUIRED_REPORT_CREDITS,
+          reservedCredits,
+          availableCredits: Math.max(availableCreditsAfterReservations, 0),
           subscription: creditCheck.subscription,
         });
       }

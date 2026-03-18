@@ -14,12 +14,12 @@ import config from "../../config.js";
  * @param {string} params.sessionId
  * @param {string} params.idea
  * @param {string[]} [params.dependsOn] - task IDs this task depends on
- * @param {string[]|null} [params.regions]
+ * @param {string|null} [params.billingRunId]
  * @returns {Promise<Object>} The created task, or { success: false, error }
  */
 export async function queueMarketResearchSummaryTask(
   { queueStore, taskProgressStore },
-  { ownerId, sessionId, idea, dependsOn, billingRunId, regions } = {},
+  { ownerId, sessionId, idea, dependsOn, billingRunId } = {},
 ) {
   if (!ownerId || !sessionId || !idea) {
     return {
@@ -48,7 +48,6 @@ export async function queueMarketResearchSummaryTask(
     params: {
       sessionId,
       idea,
-      regions: regions ?? null,
       billingRunId: billingRunId ?? null,
     },
     agentConfig: {

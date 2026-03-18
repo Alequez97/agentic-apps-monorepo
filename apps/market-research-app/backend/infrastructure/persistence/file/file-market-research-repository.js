@@ -16,9 +16,7 @@ function assertValidCompetitorId(competitorId) {
   }
 }
 
-export function createFileMarketResearchRepository({
-  dataDir = config.dataDir,
-} = {}) {
+export function createFileMarketResearchRepository({ dataDir = config.dataDir } = {}) {
   const marketResearchDir = path.join(dataDir, "market-research");
 
   function getSessionDir(sessionId) {
@@ -176,7 +174,7 @@ export function createFileMarketResearchRepository({
       });
     },
 
-    async listSessions() {
+    async listSessions({ limit = null, skip = 0 } = {}) {
       let entries;
       try {
         entries = await fs.readdir(marketResearchDir, { withFileTypes: true });
@@ -199,14 +197,22 @@ export function createFileMarketResearchRepository({
         }
       }
 
-      return sessions;
+      sessions.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+      const sliced = sessions.slice(skip);
+      return limit != null ? sliced.slice(0, limit) : sliced;
+    },
+
+    async countSessions() {
+      try {
+        const entries = await fs.readdir(marketResearchDir, { withFileTypes: true });
+        return entries.filter((e) => e.isDirectory()).length;
+      } catch {
+        return 0;
+      }
     },
 
     async getCompetitorTasks(sessionId) {
-      return readJsonOrNull(
-        getCompetitorTasksPath(sessionId),
-        `${sessionId} competitor tasks`,
-      );
+      return readJsonOrNull(getCompetitorTasksPath(sessionId), `${sessionId} competitor tasks`);
     },
 
     async saveCompetitorTasks(sessionId, tasks) {
@@ -215,10 +221,7 @@ export function createFileMarketResearchRepository({
     },
 
     async getCompetitorProfile(sessionId, competitorId) {
-      return readJsonOrNull(
-        getCompetitorProfilePath(sessionId, competitorId),
-        competitorId,
-      );
+      return readJsonOrNull(getCompetitorProfilePath(sessionId, competitorId), competitorId);
     },
 
     async saveCompetitorProfile(sessionId, competitorId, profile) {
@@ -258,10 +261,7 @@ export function createFileMarketResearchRepository({
     },
 
     async getOpportunity(sessionId) {
-      return readJsonOrNull(
-        getOpportunityPath(sessionId),
-        `${sessionId} opportunity`,
-      );
+      return readJsonOrNull(getOpportunityPath(sessionId), `${sessionId} opportunity`);
     },
 
     async saveOpportunity(sessionId, opportunity) {

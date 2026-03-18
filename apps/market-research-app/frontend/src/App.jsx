@@ -12,6 +12,7 @@ import { AnalysisPage } from "./components/market-research/AnalysisPage";
 import { AnalysisSummaryPage } from "./components/market-research/AnalysisSummaryPage";
 import { ProfilePage } from "./components/market-research/ProfilePage";
 import { LoginPage } from "./components/market-research/LoginPage";
+import { AdminPage } from "./components/market-research/AdminPage";
 
 export default function App() {
   const initSocket = useSocketStore((s) => s.initSocket);
@@ -33,6 +34,7 @@ export default function App() {
             <Route path="/analysis" element={<AnalysisPage />} />
             <Route path="/summary" element={<AnalysisSummaryPage />} />
             <Route path="/profile" element={<ProfilePage />} />
+            <Route path="/admin" element={<AdminPage />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Route>

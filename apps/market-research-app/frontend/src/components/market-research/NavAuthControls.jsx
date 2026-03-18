@@ -1,5 +1,5 @@
 import { Box, Button, HStack, Text, VStack } from "@chakra-ui/react";
-import { LogOut, User } from "lucide-react";
+import { LogOut, User, Shield } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuthStore } from "../../store/useAuthStore";
 
@@ -16,6 +16,11 @@ export function NavAuthControls({ isMobileMenu = false, onAction }) {
   const navigate = useNavigate();
   const goToProfile = () => {
     navigate("/profile");
+    onAction?.();
+  };
+  
+  const goToAdmin = () => {
+    navigate("/admin");
     onAction?.();
   };
 
@@ -123,6 +128,27 @@ export function NavAuthControls({ isMobileMenu = false, onAction }) {
           </HStack>
         </Box>
 
+        {user.isAdmin && (
+          <Button
+            variant="ghost"
+            justifyContent="flex-start"
+            fontSize="15px"
+            fontWeight="600"
+            color="#64748b"
+            borderRadius="0"
+            h="60px"
+            px={4}
+            w="100%"
+            borderBottomWidth="1px"
+            borderColor="#e4e4e7"
+            _hover={{ bg: "#f0f9ff", color: "#0369a1" }}
+            onClick={goToAdmin}
+          >
+            <Shield size={16} style={{ marginRight: "10px" }} />
+            Admin
+          </Button>
+        )}
+
         <Button
           variant="ghost"
           justifyContent="flex-start"
@@ -195,6 +221,26 @@ export function NavAuthControls({ isMobileMenu = false, onAction }) {
           {user.name ?? user.email}
         </Text>
       </HStack>
+
+      {user.isAdmin && (
+        <Button
+          size="sm"
+          variant="ghost"
+          fontSize="12px"
+          fontWeight="500"
+          color="#64748b"
+          borderRadius="7px"
+          px={2}
+          h="30px"
+          gap={1}
+          _hover={{ bg: "#f0f9ff", color: "#0369a1" }}
+          onClick={goToAdmin}
+          w={{ base: "100%", lg: "auto" }}
+        >
+          <Shield size={13} />
+          Admin
+        </Button>
+      )}
 
       {/* Sign out */}
       <Button
