@@ -37,7 +37,7 @@ export function AnalysisSummaryPage() {
   if (selectedCompetitor) {
     return (
       <Box minH="100vh" bg="#f8fafc">
-        <Box maxW="1040px" mx="auto" px={6} pt="72px" pb={16}>
+        <Box maxW="1040px" mx="auto" px={{ base: 4, md: 6 }} pt={{ base: "88px", md: "72px" }} pb={16}>
           <CompetitorDetails competitor={selectedCompetitor} onBack={clearSelectedCompetitor} />
         </Box>
       </Box>
@@ -46,7 +46,7 @@ export function AnalysisSummaryPage() {
 
   return (
     <Box minH="100vh" bg="#f8fafc">
-      <Box maxW="1040px" mx="auto" px={6} pt="72px" pb={16}>
+      <Box maxW="1040px" mx="auto" px={{ base: 4, md: 6 }} pt={{ base: "88px", md: "72px" }} pb={16}>
         <SummaryHeroBanner idea={idea} competitorCount={competitors.length} />
 
         <SaveReportBanner />

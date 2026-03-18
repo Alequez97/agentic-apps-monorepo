@@ -1,4 +1,4 @@
-import { Box, HStack, Table, Text } from "@chakra-ui/react";
+import { Box, HStack, Table, Text, VStack } from "@chakra-ui/react";
 
 function SectionLabel({ children }) {
   return (
@@ -25,12 +25,46 @@ export function OpportunityMarketGapsTable({ marketGaps }) {
       borderRadius="14px"
       borderWidth="1px"
       borderColor="#e2e8f0"
-      p={6}
+      p={{ base: 4, md: 6 }}
       mb={6}
       overflowX="auto"
     >
       <SectionLabel>Market gaps</SectionLabel>
-      <Table.Root size="sm" variant="line">
+      <VStack display={{ base: "flex", md: "none" }} align="stretch" gap={3}>
+        {marketGaps.map((gap) => (
+          <Box key={gap.label} borderWidth="1px" borderColor="#e2e8f0" borderRadius="12px" p={4}>
+            <Text fontSize="14px" fontWeight="700" color="#0f172a" mb={2}>
+              {gap.label}
+            </Text>
+            {gap.examples?.[0] ? (
+              <Text fontSize="12px" color="#64748b" lineHeight="1.6" mb={3}>
+                Example: {gap.examples[0]}
+              </Text>
+            ) : null}
+            <Box mb={3}>
+              <Text fontSize="10px" fontWeight="700" color="#94a3b8" textTransform="uppercase" mb={1}>
+                Seen in
+              </Text>
+              <Text fontSize="12px" color="#475569" lineHeight="1.6">
+                <Text as="span" fontWeight="800" color="#2563eb" mr={2}>
+                  {gap.competitorCount}
+                </Text>
+                {gap.competitors?.join(", ")}
+              </Text>
+            </Box>
+            <Box>
+              <Text fontSize="10px" fontWeight="700" color="#94a3b8" textTransform="uppercase" mb={1}>
+                Why it matters
+              </Text>
+              <Text fontSize="12px" color="#334155" lineHeight="1.7">
+                {gap.detail}
+              </Text>
+            </Box>
+          </Box>
+        ))}
+      </VStack>
+
+      <Table.Root size="sm" variant="line" display={{ base: "none", md: "table" }}>
         <Table.Header>
           <Table.Row>
             <Table.ColumnHeader color="#64748b" fontSize="11px" px={0}>

@@ -11,14 +11,13 @@ export function HeroSection() {
       flexDir="column"
       alignItems="center"
       justifyContent="center"
-      pt="80px"
-      pb="60px"
-      px={6}
+      pt={{ base: "96px", md: "88px" }}
+      pb={{ base: "36px", md: "60px" }}
+      px={{ base: 4, md: 6 }}
       position="relative"
       overflow="hidden"
       textAlign="center"
     >
-      {/* Radial gradient background glow */}
       <Box
         position="absolute"
         top="-60px"
@@ -30,7 +29,7 @@ export function HeroSection() {
         pointerEvents="none"
       />
 
-      <VStack gap={7} position="relative" maxW="700px">
+      <VStack gap={{ base: 5, md: 7 }} position="relative" maxW="700px">
         <Badge
           display="inline-flex"
           alignItems="center"
@@ -62,7 +61,7 @@ export function HeroSection() {
         </Badge>
 
         <Heading
-          fontSize="52px"
+          fontSize={{ base: "34px", md: "52px" }}
           fontWeight="800"
           color="#0f172a"
           lineHeight="1.1"
@@ -80,9 +79,15 @@ export function HeroSection() {
           </Box>
         </Heading>
 
-        <Text fontSize="16px" color="#64748b" lineHeight="1.7" maxW="500px">
-          Describe your product idea. Our AI explores the competitive landscape, finds gaps, maps
-          pricing, and gives you a go/no-go verdict — in minutes.
+        <Text
+          fontSize={{ base: "14px", md: "16px" }}
+          color="#64748b"
+          lineHeight="1.7"
+          maxW="500px"
+        >
+          Describe your product idea. Our AI explores the competitive
+          landscape, finds gaps, maps pricing, and gives you a go/no-go verdict
+          - in minutes.
         </Text>
 
         <Button
@@ -92,9 +97,9 @@ export function HeroSection() {
           bg="linear-gradient(135deg, #6366f1, #7c3aed)"
           color="white"
           borderRadius="12px"
-          px={8}
-          h="52px"
-          fontSize="15px"
+          px={{ base: 6, md: 8 }}
+          h={{ base: "48px", md: "52px" }}
+          fontSize={{ base: "14px", md: "15px" }}
           fontWeight="700"
           letterSpacing="-0.01em"
           boxShadow="0 4px 16px rgba(99,102,241,.4)"

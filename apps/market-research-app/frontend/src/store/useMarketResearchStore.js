@@ -26,17 +26,6 @@ function buildHydratedActivityEvents(tasks = [], competitors = [], status = "idl
   const events = [];
   const now = Date.now();
 
-  if (tasks.length > 0) {
-    events.push({
-      id: `restore-${now}`,
-      kind: "search",
-      message: "Restored analysis progress after page reload.",
-      agent: "System",
-      agentColor: "#64748b",
-      timestamp: now,
-    });
-  }
-
   const byCreatedAt = [...tasks].sort((a, b) => {
     const aTs = Date.parse(a?.createdAt || "") || 0;
     const bTs = Date.parse(b?.createdAt || "") || 0;

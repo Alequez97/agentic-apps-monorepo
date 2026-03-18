@@ -86,112 +86,113 @@ function HistoryRow({ entry, isLast, onOpen, onRestart, onDelete, isDeleting }) 
       cursor="pointer"
       onClick={onOpen}
     >
-      <HStack gap={4} align="center" flexWrap="wrap">
-        <Box
-          w="32px"
-          h="32px"
-          borderRadius="8px"
-          bg="#eef2ff"
-          display="flex"
-          alignItems="center"
-          justifyContent="center"
-          flexShrink={0}
-        >
-          <Search size={14} color="#6366f1" strokeWidth={2} />
-        </Box>
-
-        <Box flex="1" minW={0}>
-          <Text
-            fontSize="13px"
-            fontWeight="600"
-            color="#0f172a"
-            truncate
-            mb={0.5}
+      <VStack align="stretch" gap={3}>
+        <HStack gap={3} align="start">
+          <Box
+            w="36px"
+            h="36px"
+            borderRadius="10px"
+            bg="#eef2ff"
+            display="flex"
+            alignItems="center"
+            justifyContent="center"
+            flexShrink={0}
           >
-            {entry.idea || "Untitled analysis"}
-          </Text>
-          <HStack gap={2}>
-            <Clock size={11} color="#94a3b8" strokeWidth={2} />
-            <Text fontSize="11px" color="#94a3b8" fontWeight="500">
-              {formatDate(entry.completedAt)} · {formatTime(entry.completedAt)}
+            <Search size={15} color="#6366f1" strokeWidth={2} />
+          </Box>
+
+          <Box flex="1" minW={0}>
+            <HStack justify="space-between" align="start" gap={2}>
+              <Text fontSize="14px" fontWeight="600" color="#0f172a" lineClamp={2}>
+                {entry.idea || "Untitled analysis"}
+              </Text>
+              <Box color="#c7d2fe" flexShrink={0} pt={0.5}>
+                <ChevronRight size={16} strokeWidth={2.5} />
+              </Box>
+            </HStack>
+            <HStack gap={2} mt={1}>
+              <Clock size={11} color="#94a3b8" strokeWidth={2} />
+              <Text fontSize="11px" color="#94a3b8" fontWeight="500">
+                {formatDate(entry.completedAt)} - {formatTime(entry.completedAt)}
+              </Text>
+            </HStack>
+          </Box>
+        </HStack>
+
+        <HStack gap={2} flexWrap="wrap">
+          <HStack
+            gap={1.5}
+            bg="#f8fafc"
+            borderWidth="1px"
+            borderColor="#e2e8f0"
+            borderRadius="20px"
+            px={2.5}
+            py={1}
+          >
+            <BarChart2 size={11} color="#6366f1" strokeWidth={2} />
+            <Text fontSize="11px" fontWeight="600" color="#374151">
+              {entry.competitorCount} competitors
             </Text>
           </HStack>
-        </Box>
 
-        <HStack
-          gap={1.5}
-          bg="#f8fafc"
-          borderWidth="1px"
-          borderColor="#e2e8f0"
-          borderRadius="20px"
-          px={2.5}
-          py={1}
-          flexShrink={0}
-        >
-          <BarChart2 size={11} color="#6366f1" strokeWidth={2} />
-          <Text fontSize="11px" fontWeight="600" color="#374151">
-            {entry.competitorCount} competitors
-          </Text>
+          <HStack
+            gap={1}
+            bg={statusStyle.bg}
+            borderWidth="1px"
+            borderColor={statusStyle.borderColor}
+            borderRadius="20px"
+            px={2.5}
+            py={1}
+          >
+            <Box w="5px" h="5px" borderRadius="50%" bg={statusStyle.dot} />
+            <Text fontSize="11px" fontWeight="600" color={statusStyle.color}>
+              {statusStyle.label}
+            </Text>
+          </HStack>
         </HStack>
 
-        <HStack
-          gap={1}
-          bg={statusStyle.bg}
-          borderWidth="1px"
-          borderColor={statusStyle.borderColor}
-          borderRadius="20px"
-          px={2.5}
-          py={1}
-          flexShrink={0}
-        >
-          <Box w="5px" h="5px" borderRadius="50%" bg={statusStyle.dot} />
-          <Text fontSize="11px" fontWeight="600" color={statusStyle.color}>
-            {statusStyle.label}
-          </Text>
-        </HStack>
+        <HStack justify="space-between">
+          <HStack gap={2}>
+            {entry.status === "failed" && (
+              <Button
+                size="xs"
+                variant="outline"
+                h="30px"
+                px={2.5}
+                borderRadius="8px"
+                borderColor="#fecaca"
+                color="#b91c1c"
+                bg="white"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onRestart(entry);
+                }}
+              >
+                <RefreshCcw size={12} />
+                <Text ml={1}>Restart</Text>
+              </Button>
+            )}
+          </HStack>
 
-        {entry.status === "failed" && (
           <Button
             size="xs"
-            variant="outline"
-            h="28px"
-            px={2.5}
+            variant="ghost"
+            h="30px"
+            minW="30px"
+            px={2}
             borderRadius="8px"
-            borderColor="#fecaca"
-            color="#b91c1c"
-            bg="white"
+            color="#94a3b8"
+            _hover={{ bg: "#fef2f2", color: "#dc2626" }}
+            isDisabled={isDeleting}
             onClick={(event) => {
               event.stopPropagation();
-              onRestart(entry);
+              onDelete(entry);
             }}
           >
-            <RefreshCcw size={12} />
-            <Text ml={1}>Restart</Text>
+            <Trash2 size={12} />
           </Button>
-        )}
-
-        <Button
-          size="xs"
-          variant="ghost"
-          h="28px"
-          minW="28px"
-          px={2}
-          borderRadius="8px"
-          color="#94a3b8"
-          _hover={{ bg: "#fef2f2", color: "#dc2626" }}
-          isDisabled={isDeleting}
-          onClick={(event) => {
-            event.stopPropagation();
-            onDelete(entry);
-          }}
-        >
-          <Trash2 size={12} />
-        </Button>
-
-        <Box color="#c7d2fe" flexShrink={0}>
-          <ChevronRight size={15} strokeWidth={2.5} />
-        </Box>
-      </HStack>
+        </HStack>
+      </VStack>
     </Box>
   );
 }

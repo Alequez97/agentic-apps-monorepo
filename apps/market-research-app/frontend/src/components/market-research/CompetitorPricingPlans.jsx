@@ -116,6 +116,7 @@ export function CompetitorPricingPlans({ pricingPlans, pricingEvidence }) {
                 borderRadius="9px"
                 p={3}
                 bg="#f8fafc"
+                flexDir={{ base: "column", md: "row" }}
               >
                 <Text fontSize="12px" color="#334155" lineHeight="1.55" flex="1">
                   {item.claim}
@@ -135,13 +136,19 @@ export function CompetitorPricingPlans({ pricingPlans, pricingEvidence }) {
                   h="26px"
                   px={2.5}
                   flexShrink={0}
+                  alignSelf={{ base: "stretch", md: "flex-start" }}
                   _hover={{
                     bg: "#ffffff",
                     borderColor: "#6366f1",
                     color: "#6366f1",
                   }}
                 >
-                  {item.label}
+                  <Box as="span" display={{ base: "none", md: "inline" }}>
+                    {item.label}
+                  </Box>
+                  <Box as="span" display={{ base: "inline", md: "none" }}>
+                    Source
+                  </Box>
                   <ExternalLink size={10} style={{ marginLeft: "4px" }} />
                 </Button>
               </HStack>

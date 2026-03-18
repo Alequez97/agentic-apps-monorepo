@@ -1,4 +1,4 @@
-import { Box, Button, HStack, Text } from "@chakra-ui/react";
+import { Box, Button, HStack, Text, VStack } from "@chakra-ui/react";
 import { LogOut, User } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuthStore } from "../../store/useAuthStore";
@@ -8,19 +8,50 @@ import { useAuthStore } from "../../store/useAuthStore";
  * Shows user avatar + profile link + sign out when authenticated,
  * or a "Sign in" button when anonymous.
  */
-export function NavAuthControls() {
+export function NavAuthControls({ isMobileMenu = false, onAction }) {
   const user = useAuthStore((s) => s.user);
   const signOut = useAuthStore((s) => s.signOut);
 
   const { pathname } = useLocation();
   const navigate = useNavigate();
-  const goToProfile = () => navigate("/profile");
+  const goToProfile = () => {
+    navigate("/profile");
+    onAction?.();
+  };
 
   const handleSignIn = () => {
     navigate("/login", { state: { returnTo: pathname } });
+    onAction?.();
+  };
+
+  const handleSignOut = () => {
+    signOut();
+    onAction?.();
   };
 
   if (!user) {
+    if (isMobileMenu) {
+      return (
+        <Button
+          variant="ghost"
+          justifyContent="flex-start"
+          fontSize="15px"
+          fontWeight="600"
+          color="#0f172a"
+          borderRadius="0"
+          h="60px"
+          px={4}
+          w="100%"
+          borderBottomWidth="1px"
+          borderColor="#e4e4e7"
+          _hover={{ bg: "#f8fafc" }}
+          onClick={handleSignIn}
+        >
+          Sign in
+        </Button>
+      );
+    }
+
     return (
       <Button
         variant="ghost"
@@ -37,6 +68,78 @@ export function NavAuthControls() {
       >
         Sign in
       </Button>
+    );
+  }
+
+  if (isMobileMenu) {
+    return (
+      <VStack align="stretch" gap={0} w="100%">
+        <Box
+          as="button"
+          type="button"
+          w="100%"
+          textAlign="left"
+          px={4}
+          py={3.5}
+          borderBottomWidth="1px"
+          borderColor="#e4e4e7"
+          _hover={{ bg: "#f8fafc" }}
+          onClick={goToProfile}
+        >
+          <HStack gap={3} minW={0}>
+            {user.picture ? (
+              <Box
+                as="img"
+                src={user.picture}
+                alt={user.name ?? user.email}
+                w="34px"
+                h="34px"
+                borderRadius="50%"
+                flexShrink={0}
+                objectFit="cover"
+              />
+            ) : (
+              <Box
+                w="34px"
+                h="34px"
+                borderRadius="50%"
+                bg="linear-gradient(135deg, #6366f1, #7c3aed)"
+                display="flex"
+                alignItems="center"
+                justifyContent="center"
+                flexShrink={0}
+              >
+                <User size={16} color="white" strokeWidth={2.5} />
+              </Box>
+            )}
+            <Box minW={0}>
+              <Text fontSize="15px" fontWeight="600" color="#0f172a" truncate>
+                {user.name ?? user.email}
+              </Text>
+              <Text fontSize="13px" color="#64748b" truncate>
+                {user.email}
+              </Text>
+            </Box>
+          </HStack>
+        </Box>
+
+        <Button
+          variant="ghost"
+          justifyContent="flex-start"
+          fontSize="15px"
+          fontWeight="600"
+          color="#64748b"
+          borderRadius="0"
+          h="60px"
+          px={4}
+          w="100%"
+          _hover={{ bg: "#fef2f2", color: "#dc2626" }}
+          onClick={handleSignOut}
+        >
+          <LogOut size={16} style={{ marginRight: "10px" }} />
+          Sign out
+        </Button>
+      </VStack>
     );
   }
 
@@ -105,7 +208,7 @@ export function NavAuthControls() {
         h="30px"
         gap={1}
         _hover={{ bg: "#fef2f2", color: "#dc2626" }}
-        onClick={signOut}
+        onClick={handleSignOut}
         w={{ base: "100%", lg: "auto" }}
       >
         <LogOut size={13} />

@@ -44,7 +44,7 @@ export function IdeaInputCard() {
       borderRadius="16px"
       borderWidth="1px"
       borderColor="#e2e8f0"
-      p={8}
+      p={{ base: 5, md: 8 }}
       boxShadow="0 1px 3px rgba(0,0,0,.05)"
     >
       <VStack gap={5} align="stretch">
@@ -62,7 +62,7 @@ export function IdeaInputCard() {
             value={idea}
             onChange={(e) => setIdea(e.target.value)}
             placeholder="Describe your business idea..."
-            minH="120px"
+            minH={{ base: "100px", md: "120px" }}
             fontSize="13px"
             borderColor={validationError ? "#f87171" : "#cbd5e1"}
             borderRadius="8px"
@@ -138,7 +138,7 @@ export function IdeaInputCard() {
                   animation: "spin 1s linear infinite",
                 }}
               />
-              Validating…
+              Validating...
             </>
           ) : (
             <>

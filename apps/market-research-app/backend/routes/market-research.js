@@ -227,8 +227,36 @@ export function createMarketResearchRouter({
       const { idea, regions } = req.body;
 
       const normalizedRegions = Array.isArray(regions) && regions.length > 0 ? regions : null;
+      const validatedAt = Date.now();
 
       const validation = await validateAnalysisPrompt(idea, config.apiKeys.openai);
+      const validationState = {
+        validatedAt,
+        shouldContinue: validation.shouldContinue,
+        rejectionReason: validation.rejectionReason ?? null,
+        suggestedPrompt: validation.suggestedPrompt ?? null,
+      };
+
+      if (!validation.shouldContinue) {
+        try {
+          await marketResearchRepository.upsertSession(
+            reportId,
+            idea,
+            {
+              status: "validation_failed",
+              promptValidation: validationState,
+            },
+            req.userId,
+          );
+        } catch (persistError) {
+          logger.warn("Failed to persist prompt validation result", {
+            error: persistError.message,
+            reportId,
+            component: "MarketResearchRoutes",
+          });
+        }
+      }
+
       if (!validation.shouldContinue) {
         return res.status(422).json({
           error: "Prompt validation failed",
@@ -250,6 +278,7 @@ export function createMarketResearchRouter({
           {
             status: "analyzing",
             numCompetitors,
+            promptValidation: validationState,
           },
           req.userId,
         );
