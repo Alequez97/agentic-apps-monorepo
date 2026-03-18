@@ -45,6 +45,8 @@ function getSubscriptionModel(connection) {
       plan: { type: String, default: "free" },
       status: { type: String, default: "active" },
       creditsUsed: { type: Number, default: 0 },
+      creditsTotal: { type: Number, default: null },
+      creditEvents: { type: [mongoose.Schema.Types.Mixed], default: [] },
       createdAt: { type: Number, required: true },
       updatedAt: { type: Number, required: true },
     },
@@ -76,6 +78,12 @@ function buildSubscriptionUpsertUpdate(userId, updates, now) {
       ...(updates.creditsUsed !== undefined
         ? { creditsUsed: updates.creditsUsed }
         : {}),
+      ...(updates.creditsTotal !== undefined
+        ? { creditsTotal: updates.creditsTotal }
+        : {}),
+      ...(updates.creditEvents !== undefined
+        ? { creditEvents: updates.creditEvents }
+        : {}),
       updatedAt: now,
     },
     $setOnInsert: {
@@ -83,6 +91,8 @@ function buildSubscriptionUpsertUpdate(userId, updates, now) {
       ...(updates.plan === undefined ? { plan: "free" } : {}),
       ...(updates.status === undefined ? { status: "active" } : {}),
       ...(updates.creditsUsed === undefined ? { creditsUsed: 0 } : {}),
+      ...(updates.creditsTotal === undefined ? { creditsTotal: null } : {}),
+      ...(updates.creditEvents === undefined ? { creditEvents: [] } : {}),
       createdAt: now,
     },
   };

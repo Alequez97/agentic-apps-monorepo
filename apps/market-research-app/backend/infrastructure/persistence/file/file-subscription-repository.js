@@ -47,6 +47,8 @@ export function createFileSubscriptionRepository({ dataDir }) {
         plan: updates.plan ?? existing?.plan ?? "free",
         status: updates.status ?? existing?.status ?? "active",
         creditsUsed: updates.creditsUsed ?? existing?.creditsUsed ?? 0,
+        creditsTotal: updates.creditsTotal ?? existing?.creditsTotal ?? null,
+        creditEvents: updates.creditEvents ?? existing?.creditEvents ?? [],
         createdAt: existing?.createdAt ?? now,
         updatedAt: now,
       };

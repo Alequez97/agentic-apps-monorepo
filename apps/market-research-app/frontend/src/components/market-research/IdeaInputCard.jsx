@@ -16,15 +16,18 @@ const REJECTION_MESSAGES = {
 export function IdeaInputCard() {
   const user = useAuthStore((s) => s.user);
   const navigate = useNavigate();
+  const creditsRemaining = user?.creditsRemaining ?? 0;
   const idea = useMarketResearchStore((s) => s.idea);
   const setIdea = useMarketResearchStore((s) => s.setIdea);
   const regions = useMarketResearchStore((s) => s.regions);
   const startAnalysis = useMarketResearchStore((s) => s.startAnalysis);
   const isValidating = useMarketResearchStore((s) => s.isValidating);
   const validationError = useMarketResearchStore((s) => s.validationError);
+  const analysisError = useMarketResearchStore((s) => s.analysisError);
 
   const regionValid = regions === null || regions.length > 0;
-  const canSubmit = idea.trim() && regionValid && !isValidating;
+  const hasEnoughCredits = !user || creditsRemaining >= 2;
+  const canSubmit = idea.trim() && regionValid && !isValidating && hasEnoughCredits;
 
   const handleAnalyze = async () => {
     if (!user) {
@@ -104,8 +107,22 @@ export function IdeaInputCard() {
         <RegionSelector />
 
         <Text fontSize="11px" color="#94a3b8">
-          Account required - live market intelligence - ~5 min
+          Account required - live market intelligence - 2 credits per full report
         </Text>
+
+        {user ? (
+          <Text fontSize="12px" color={hasEnoughCredits ? "#475569" : "#dc2626"} fontWeight="500">
+            {hasEnoughCredits
+              ? `${creditsRemaining} credits remaining`
+              : `You need at least 2 credits to start a report. ${creditsRemaining} remaining.`}
+          </Text>
+        ) : null}
+
+        {analysisError ? (
+          <Text fontSize="12px" color="#dc2626" fontWeight="500">
+            {analysisError}
+          </Text>
+        ) : null}
 
         <Button
           display="inline-flex"
@@ -143,7 +160,7 @@ export function IdeaInputCard() {
           ) : (
             <>
               <Search size={16} strokeWidth={2.5} />
-              {user ? "Analyze Market" : "Sign in to analyze"}
+              {user ? (hasEnoughCredits ? "Analyze Market" : "Need 2 credits") : "Sign in to analyze"}
             </>
           )}
         </Button>

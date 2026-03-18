@@ -13,6 +13,7 @@ import { SummaryActionButtons } from "./SummaryActionButtons";
 
 export function AnalysisSummaryPage() {
   const idea = useMarketResearchStore((s) => s.idea);
+  const regions = useMarketResearchStore((s) => s.regions);
   const competitors = useMarketResearchStore((s) => s.competitors);
   const report = useMarketResearchStore((s) => s.report);
   const reportId = useMarketResearchStore((s) => s.reportId);
@@ -59,7 +60,7 @@ export function AnalysisSummaryPage() {
         pt={{ base: "88px", md: "72px" }}
         pb={16}
       >
-        <SummaryHeroBanner idea={idea} competitorCount={competitors.length} />
+        <SummaryHeroBanner idea={idea} competitorCount={competitors.length} regions={regions} />
 
         <SaveReportBanner />
 

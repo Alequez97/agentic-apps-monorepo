@@ -19,6 +19,19 @@ export function createAuthRouter({ userRepository, subscriptionService }) {
     maxAge: 7 * 24 * 60 * 60 * 1000,
   };
 
+  function buildUserResponse(user, subscription) {
+    return {
+      userId: user.userId,
+      name: user.name,
+      email: user.email,
+      picture: user.picture,
+      plan: subscription?.plan ?? "free",
+      creditsUsed: subscription?.creditsUsed ?? 0,
+      creditsTotal: subscription?.creditsTotal ?? 0,
+      creditsRemaining: subscription?.creditsRemaining ?? 0,
+    };
+  }
+
   router.post("/google", validateRequest({ body: googleAuthBodySchema }), async (req, res) => {
     const { credential } = req.body;
 
@@ -65,13 +78,7 @@ export function createAuthRouter({ userRepository, subscriptionService }) {
     });
 
     return res.json({
-      user: {
-        userId: user.userId,
-        name: user.name,
-        email: user.email,
-        picture: user.picture,
-        plan: subscription?.plan ?? "free",
-      },
+      user: buildUserResponse(user, subscription),
       csrfToken,
     });
   });
@@ -87,13 +94,7 @@ export function createAuthRouter({ userRepository, subscriptionService }) {
     const csrfToken = issueCsrfToken(res);
 
     return res.json({
-      user: {
-        userId: user.userId,
-        name: user.name,
-        email: user.email,
-        picture: user.picture,
-        plan: subscription?.plan ?? "free",
-      },
+      user: buildUserResponse(user, subscription),
       csrfToken,
     });
   });

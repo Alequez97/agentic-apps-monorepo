@@ -1,3 +1,4 @@
+import { randomUUID } from "crypto";
 import { Router } from "express";
 import * as logger from "../utils/logger.js";
 import { requireAuth } from "../middleware/auth.js";
@@ -36,6 +37,7 @@ export function createMarketResearchRouter({
   orchestrator,
 }) {
   const router = Router();
+  const REQUIRED_REPORT_CREDITS = 2;
 
   // GET /api/market-research
   // List report history entries.
@@ -121,6 +123,7 @@ export function createMarketResearchRouter({
       const { reportId } = req.params;
 
       try {
+        const subscription = await subscriptionService.getSubscription(req.userId);
         const reportSession = await requireOwnedReport(
           req,
           res,
@@ -151,6 +154,7 @@ export function createMarketResearchRouter({
       const { reportId } = req.params;
 
       try {
+        const subscription = await subscriptionService.getSubscription(req.userId);
         const reportSession = await requireOwnedReport(
           req,
           res,
@@ -198,6 +202,7 @@ export function createMarketResearchRouter({
           competitorTasks: competitorTasks ?? [],
           competitors,
           tasks: filteredLiveTasks,
+          subscription,
         });
       } catch (error) {
         if (error.message === "Invalid sessionId format") {
@@ -265,11 +270,22 @@ export function createMarketResearchRouter({
         });
       }
 
+      const creditCheck = await subscriptionService.canStartReport(req.userId);
+      if (!creditCheck.allowed) {
+        return res.status(402).json({
+          error: `At least ${REQUIRED_REPORT_CREDITS} credits are required to start a report`,
+          code: "INSUFFICIENT_CREDITS",
+          requiredCredits: REQUIRED_REPORT_CREDITS,
+          subscription: creditCheck.subscription,
+        });
+      }
+
       const plan = await subscriptionService.getSubscriptionPlanDetails(req.userId);
       if (!plan) {
         return res.status(403).json({ error: "No subscription plan found" });
       }
       const numCompetitors = plan.numCompetitors;
+      const billingRunId = randomUUID();
 
       try {
         await marketResearchRepository.upsertSession(
@@ -278,6 +294,7 @@ export function createMarketResearchRouter({
           {
             status: "analyzing",
             numCompetitors,
+            billingRunId,
             promptValidation: validationState,
           },
           req.userId,
@@ -297,6 +314,7 @@ export function createMarketResearchRouter({
           idea,
           numCompetitors,
           regions: normalizedRegions,
+          billingRunId,
         });
 
         if (task?.success === false) {
@@ -312,7 +330,7 @@ export function createMarketResearchRouter({
           component: "MarketResearchRoutes",
         });
 
-        return res.status(201).json({ task });
+        return res.status(201).json({ task, subscription: creditCheck.subscription });
       } catch (error) {
         if (error.message === "Invalid sessionId format") {
           return res.status(400).json({ error: "Invalid reportId format" });
@@ -402,6 +420,7 @@ export function createMarketResearchRouter({
       const { reportId } = req.params;
 
       try {
+        const subscription = await subscriptionService.getSubscription(req.userId);
         const reportSession = await requireOwnedReport(
           req,
           res,
@@ -517,6 +536,7 @@ export function createMarketResearchRouter({
             status,
             report: null,
             error: reportSession.state?.error ?? null,
+            subscription,
             message:
               status === "failed"
                 ? "Analysis failed before a final report was generated"
@@ -529,6 +549,7 @@ export function createMarketResearchRouter({
           status,
           report,
           error: reportSession.state?.error ?? null,
+          subscription,
         });
       } catch (error) {
         if (error.message === "Invalid sessionId format") {

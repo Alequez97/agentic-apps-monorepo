@@ -1,11 +1,13 @@
 import { Box, HStack, Text } from "@chakra-ui/react";
 import { Activity } from "lucide-react";
 
-export function SummaryHeroBanner({ idea, competitorCount }) {
+export function SummaryHeroBanner({ idea, competitorCount, regions }) {
   const heroStats = [
     { value: String(competitorCount ?? 0), label: "Competitors analyzed" },
     { value: "High", label: "Confidence level" },
   ];
+
+  const regionLabels = regions === null ? ["Worldwide"] : regions;
 
   return (
     <Box
@@ -78,10 +80,30 @@ export function SummaryHeroBanner({ idea, competitorCount }) {
 
       {/* Idea subtitle */}
       {idea && (
-        <Text fontSize={{ base: "12px", md: "13px" }} color="#c7d2fe" mb={5} maxW="520px">
+        <Text fontSize={{ base: "12px", md: "13px" }} color="#c7d2fe" mb={3} maxW="520px">
           {idea}
         </Text>
       )}
+
+      {/* Regions */}
+      <HStack gap={1.5} mb={5} flexWrap="wrap">
+        {regionLabels.map((r) => (
+          <Text
+            key={r}
+            fontSize="11px"
+            fontWeight="600"
+            color="#a5b4fc"
+            bg="rgba(99,102,241,0.2)"
+            borderWidth="1px"
+            borderColor="rgba(99,102,241,0.35)"
+            px={2}
+            py={0.5}
+            borderRadius="6px"
+          >
+            {r}
+          </Text>
+        ))}
+      </HStack>
 
       {/* Stats row */}
       <HStack gap={3} flexWrap="wrap">

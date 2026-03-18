@@ -19,14 +19,7 @@ export function PricingSection() {
   const plans = PRICING_PLANS[billingMode];
 
   return (
-    <Box
-      bg="white"
-      borderTopWidth="1px"
-      borderColor="#f1f5f9"
-      pt={10}
-      pb={20}
-      px={6}
-    >
+    <Box bg="white" borderTopWidth="1px" borderColor="#f1f5f9" pt={10} pb={20} px={6}>
       <Container maxW="960px">
         <VStack gap={12} align="stretch">
           <VStack gap={5} textAlign="center">
@@ -39,28 +32,20 @@ export function PricingSection() {
             >
               PRICING
             </Text>
-            <Heading
-              fontSize="30px"
-              fontWeight="800"
-              color="#0f172a"
-              letterSpacing="-0.02em"
-            >
+            <Heading fontSize="30px" fontWeight="800" color="#0f172a" letterSpacing="-0.02em">
               Simple, credit-based pricing
             </Heading>
             <Text fontSize="14px" color="#64748b">
-              Each report costs 1 credit. Credits come with your plan — top up
-              anytime.
+              Each full report costs 2 credits: 1 after competitors are found and 1 after the
+              final verdict is generated.
             </Text>
             <HStack gap={1.5} fontSize="12px" color="#94a3b8">
               <AlertCircle size={12} />
-              <Text>
-                Credits reset monthly. Unused credits do not roll over.
-              </Text>
+              <Text>Credits reset monthly. Unused credits do not roll over.</Text>
             </HStack>
             <BillingToggle />
           </VStack>
 
-          {/* Plans grid */}
           <Grid
             templateColumns={{
               base: "1fr",
@@ -71,15 +56,10 @@ export function PricingSection() {
             w="full"
           >
             {plans.map((plan) => (
-              <PricingCard
-                key={plan.name}
-                plan={plan}
-                isComingSoon={plan.name !== "Free"}
-              />
+              <PricingCard key={plan.name} plan={plan} isComingSoon={plan.name !== "Free"} />
             ))}
           </Grid>
 
-          {/* Top-up note */}
           <HStack
             bg="#f8fafc"
             borderWidth="1px"
@@ -107,7 +87,7 @@ export function PricingSection() {
               <Text as="span" fontWeight="600" color="#0f172a">
                 5 extra credits for $5
               </Text>{" "}
-              on any paid plan — no plan change needed.
+              on any paid plan - no plan change needed.
             </Text>
           </HStack>
 

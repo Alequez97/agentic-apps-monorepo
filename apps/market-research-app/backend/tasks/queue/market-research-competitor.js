@@ -18,6 +18,7 @@ import config from "../../config.js";
  * @param {string} [params.competitorDescription]
  * @param {string} [params.competitorBriefing]
  * @param {string} [params.delegatedByTaskId]
+ * @param {string[]|null} [params.regions]
  * @returns {Promise<Object>} The created task, or { success: false, error }
  */
 export async function queueMarketResearchCompetitorTask(
@@ -31,19 +32,13 @@ export async function queueMarketResearchCompetitorTask(
     competitorDescription,
     competitorBriefing,
     delegatedByTaskId = null,
+    regions = null,
   } = {},
 ) {
-  if (
-    !ownerId ||
-    !sessionId ||
-    !competitorId ||
-    !competitorName ||
-    !competitorUrl
-  ) {
+  if (!ownerId || !sessionId || !competitorId || !competitorName || !competitorUrl) {
     return {
       success: false,
-      error:
-        "ownerId, sessionId, competitorId, competitorName, and competitorUrl are required",
+      error: "ownerId, sessionId, competitorId, competitorName, and competitorUrl are required",
     };
   }
 
@@ -69,6 +64,7 @@ export async function queueMarketResearchCompetitorTask(
       competitorName,
       competitorUrl,
       competitorDescription: competitorDescription || "",
+      regions: regions ?? null,
       ...(competitorBriefing && { competitorBriefing }),
       ...(delegatedByTaskId && { delegatedByTaskId }),
     },

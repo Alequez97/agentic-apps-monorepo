@@ -12,6 +12,21 @@ export const useAuthStore = create(
     (set) => ({
       user: null,
 
+      updateUserCredits: (subscription) =>
+        set((state) => {
+          if (!state.user || !subscription) return state;
+          return {
+            user: {
+              ...state.user,
+              plan: subscription.plan ?? state.user.plan,
+              creditsUsed: subscription.creditsUsed ?? state.user.creditsUsed ?? 0,
+              creditsTotal: subscription.creditsTotal ?? state.user.creditsTotal ?? 0,
+              creditsRemaining:
+                subscription.creditsRemaining ?? state.user.creditsRemaining ?? 0,
+            },
+          };
+        }),
+
       signInWithGoogle: async (credential) => {
         const response = await apiSignInWithGoogle(credential);
         const user = response.data?.user ?? null;

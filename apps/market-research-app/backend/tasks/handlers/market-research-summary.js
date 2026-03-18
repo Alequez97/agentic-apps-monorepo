@@ -7,9 +7,9 @@ export async function marketResearchSummaryHandler(
   task,
   taskLogger,
   agent,
-  { taskEventPublisher, marketResearchRepository },
+  { taskEventPublisher, marketResearchRepository, subscriptionService },
 ) {
-  const { sessionId, idea } = task.params || {};
+  const { sessionId, idea, billingRunId } = task.params || {};
 
   const competitorTasks = await marketResearchRepository.getCompetitorTasks(
     sessionId,
@@ -77,6 +77,32 @@ export async function marketResearchSummaryHandler(
       };
 
       await marketResearchRepository.saveReport(sessionId, completedReport);
+      await subscriptionService.chargeCredits(task.ownerId, {
+        amount: 1,
+        eventKey: `market-research:${sessionId}:${billingRunId || "default"}:summary`,
+        reason: "market-research-summary",
+        sessionId,
+      });
+
+      const reportSession = await marketResearchRepository.getSession(sessionId);
+      if (reportSession) {
+        await marketResearchRepository.upsertSession(
+          sessionId,
+          reportSession.idea || report.idea || idea,
+          {
+            ...(reportSession.state || {}),
+            credits: {
+              ...(reportSession.state?.credits || {}),
+              summary: {
+                charged: true,
+                amount: 1,
+                chargedAt: Date.now(),
+              },
+            },
+          },
+          reportSession.ownerId,
+        );
+      }
 
       await marketResearchRepository.markSessionComplete(
         sessionId,

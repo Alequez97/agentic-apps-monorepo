@@ -178,7 +178,7 @@ export const PRICING_PLANS = {
   monthly: [
     {
       name: "Free",
-      credits: "2 credits / month",
+      credits: "4 credits / month",
       price: 0,
       numCompetitors: 10,
       tagline: "Try it out, no commitment.",
@@ -221,7 +221,7 @@ export const PRICING_PLANS = {
   annual: [
     {
       name: "Free",
-      credits: "2 credits / month",
+      credits: "4 credits / month",
       price: 0,
       numCompetitors: 10,
       tagline: "Try it out, no commitment.",

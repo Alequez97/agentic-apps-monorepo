@@ -19,7 +19,7 @@ import config from "../../config.js";
  */
 export async function queueMarketResearchInitialTask(
   { queueStore, taskProgressStore },
-  { ownerId, sessionId, idea, numCompetitors, regions } = {},
+  { ownerId, sessionId, idea, numCompetitors, regions, billingRunId } = {},
 ) {
   if (!ownerId || !sessionId || !idea) {
     return {
@@ -49,6 +49,7 @@ export async function queueMarketResearchInitialTask(
       idea,
       numCompetitors,
       regions: regions ?? null,
+      billingRunId: billingRunId ?? null,
     },
     agentConfig: {
       agent: taskConfig.agent,

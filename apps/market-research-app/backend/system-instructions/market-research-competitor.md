@@ -8,6 +8,10 @@ Your output will later be merged into a final market opportunity report. Weak ge
 
 Research **{{COMPETITOR_NAME}}** (`{{COMPETITOR_URL}}`) and persist a complete profile.
 
+**Target markets:** {{TARGET_MARKETS}}
+
+Focus your research on how this competitor operates and positions itself in the target markets above. Prioritize pricing, availability, and customer data that is relevant to those regions.
+
 ## Available Tools
 
 - `web_search`: Search the web for real-time information about this competitor

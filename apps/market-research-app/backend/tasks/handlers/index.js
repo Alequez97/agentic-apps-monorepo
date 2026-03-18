@@ -41,11 +41,19 @@ function buildTemplateVars(task) {
         COMPETITOR_NAME: task.params?.competitorName || "",
         COMPETITOR_URL: task.params?.competitorUrl || "",
         COMPETITOR_DESCRIPTION: task.params?.competitorDescription || "",
+        TARGET_MARKETS:
+          Array.isArray(task.params?.regions) && task.params.regions.length > 0
+            ? task.params.regions.join(", ")
+            : "Worldwide",
       };
     case TASK_TYPES.MARKET_RESEARCH_SUMMARY:
       return {
         SESSION_ID: sessionId,
         IDEA: task.params?.idea || "",
+        TARGET_MARKETS:
+          Array.isArray(task.params?.regions) && task.params.regions.length > 0
+            ? task.params.regions.join(", ")
+            : "Worldwide",
       };
     default:
       return {};
@@ -62,6 +70,7 @@ export function createTaskHandlersByType({
   taskScheduler,
   taskEventPublisher,
   marketResearchRepository,
+  subscriptionService,
 }) {
   return {
     [TASK_TYPES.MARKET_RESEARCH_INITIAL]: async (task, taskLogger, agent) => {
@@ -73,57 +82,48 @@ export function createTaskHandlersByType({
         }),
       );
 
-      agent.enableDelegationTools(
-        task.id,
-        {
-          [TASK_TYPES.MARKET_RESEARCH_COMPETITOR]: {
-            queue: (params) =>
-              taskScheduler.queueMarketResearchCompetitorTask(params),
-            buildQueueParams: ({ params, requestContent, parentTaskId }) => ({
-              ...params,
-              ownerId: task.ownerId,
-              competitorBriefing: requestContent,
-              delegatedByTaskId: parentTaskId,
-            }),
-            buildLogContext: ({ params }) => ({
-              competitorId: params.competitorId,
-            }),
-            buildSuccessContext: ({ params }) => ({
-              competitorId: params.competitorId,
-            }),
-            buildSuccessData: ({ task, params }) => ({
-              taskId: task.id,
-              type: task.type,
-              competitorId: params.competitorId,
-              message: `Queued ${task.type} task for competitor '${params.competitorId}' (taskId: ${task.id})`,
-            }),
-          },
+      agent.enableDelegationTools(task.id, {
+        [TASK_TYPES.MARKET_RESEARCH_COMPETITOR]: {
+          queue: (params) => taskScheduler.queueMarketResearchCompetitorTask(params),
+          buildQueueParams: ({ params, requestContent, parentTaskId }) => ({
+            ...params,
+            ownerId: task.ownerId,
+            regions: task.params?.regions ?? null,
+            competitorBriefing: requestContent,
+            delegatedByTaskId: parentTaskId,
+          }),
+          buildLogContext: ({ params }) => ({
+            competitorId: params.competitorId,
+          }),
+          buildSuccessContext: ({ params }) => ({
+            competitorId: params.competitorId,
+          }),
+          buildSuccessData: ({ task, params }) => ({
+            taskId: task.id,
+            type: task.type,
+            competitorId: params.competitorId,
+            message: `Queued ${task.type} task for competitor '${params.competitorId}' (taskId: ${task.id})`,
+          }),
         },
-      );
+      });
 
       if (config.apiKeys.braveSearch) {
         agent.enableWebSearchTools(config.apiKeys.braveSearch);
       }
 
-      const systemPrompt = await loadSystemInstruction(
-        task.systemInstructionFile,
-        task,
-      );
+      const systemPrompt = await loadSystemInstruction(task.systemInstructionFile, task);
 
       return {
         systemPrompt,
         ...marketResearchInitialHandler(task, taskLogger, agent, {
           taskScheduler,
           marketResearchRepository,
+          subscriptionService,
         }),
       };
     },
 
-    [TASK_TYPES.MARKET_RESEARCH_COMPETITOR]: async (
-      task,
-      taskLogger,
-      agent,
-    ) => {
+    [TASK_TYPES.MARKET_RESEARCH_COMPETITOR]: async (task, taskLogger, agent) => {
       agent.setFileToolsEnabled(false);
       agent.enableCustomTools(
         createMarketResearchOutputToolExecutor({
@@ -137,10 +137,7 @@ export function createTaskHandlersByType({
       }
       agent.enableWebFetchTools();
 
-      const systemPrompt = await loadSystemInstruction(
-        task.systemInstructionFile,
-        task,
-      );
+      const systemPrompt = await loadSystemInstruction(task.systemInstructionFile, task);
 
       return {
         systemPrompt,
@@ -160,16 +157,14 @@ export function createTaskHandlersByType({
         }),
       );
 
-      const systemPrompt = await loadSystemInstruction(
-        task.systemInstructionFile,
-        task,
-      );
+      const systemPrompt = await loadSystemInstruction(task.systemInstructionFile, task);
 
       return {
         systemPrompt,
         ...(await marketResearchSummaryHandler(task, taskLogger, agent, {
           taskEventPublisher,
           marketResearchRepository,
+          subscriptionService,
         })),
       };
     },

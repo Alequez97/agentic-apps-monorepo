@@ -10,6 +10,7 @@ import { useProfileStore } from "./useProfileStore";
 import { useTaskProgressStore } from "./useTaskProgressStore";
 import { getMarketResearchReport } from "../api/market-research";
 import { SOCKET_ORIGIN, SOCKET_PATH } from "../config/runtime";
+import { useAuthStore } from "./useAuthStore";
 
 export const useSocketStore = create((set, get) => ({
   socket: null,
@@ -130,6 +131,7 @@ export const useSocketStore = create((set, get) => ({
             .then((response) => {
               const report = response?.data?.report;
               const status = response?.data?.status;
+              useAuthStore.getState().updateUserCredits(response?.data?.subscription ?? null);
               if (report && (status === "complete" || status === "completed")) {
                 useMarketResearchStore.getState()._applyReport(report);
               } else {
@@ -261,6 +263,7 @@ export const useSocketStore = create((set, get) => ({
         .then((response) => {
           const report = response?.data?.report;
           const status = response?.data?.status;
+          useAuthStore.getState().updateUserCredits(response?.data?.subscription ?? null);
           if (report && (status === "complete" || status === "completed")) {
             useMarketResearchStore.getState()._applyReport(report);
           } else {

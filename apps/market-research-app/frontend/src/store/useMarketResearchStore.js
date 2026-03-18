@@ -8,6 +8,7 @@ import {
   restartMarketResearchAnalysis,
   cancelMarketResearchAnalysis,
 } from "../api/market-research";
+import { useAuthStore } from "./useAuthStore";
 import { useProfileStore } from "./useProfileStore";
 
 function logLineToKind(log) {
@@ -89,6 +90,7 @@ export const useMarketResearchStore = create(
       analysisStartedAt: null,
       isValidating: false,
       validationError: null, // { rejectionReason, suggestedPrompt }
+      analysisError: null,
       isAnalyzing: false,
       isAnalysisComplete: false,
       summaryStatus: "idle",
@@ -102,7 +104,7 @@ export const useMarketResearchStore = create(
       clearIdea: () => set({ idea: "" }),
 
       // --- Input form actions ---
-      setIdea: (idea) => set({ idea, validationError: null }),
+      setIdea: (idea) => set({ idea, validationError: null, analysisError: null }),
       setRegions: (regions) => set({ regions }),
       setBillingMode: (mode) => set({ billingMode: mode }),
       selectPlan: (plan) => set({ selectedPlan: plan }),
@@ -117,6 +119,7 @@ export const useMarketResearchStore = create(
         set({
           isValidating: true,
           validationError: null,
+          analysisError: null,
           reportId,
           isAnalyzing: false,
           isAnalysisComplete: false,
@@ -130,7 +133,8 @@ export const useMarketResearchStore = create(
         });
 
         try {
-          await requestMarketResearchAnalysis(reportId, idea, numCompetitors, regions);
+          const response = await requestMarketResearchAnalysis(reportId, idea, numCompetitors, regions);
+          useAuthStore.getState().updateUserCredits(response?.data?.subscription ?? null);
           set({ isValidating: false, isAnalyzing: true });
           useProfileStore.getState().upsertAnalysis({
             id: reportId,
@@ -149,6 +153,7 @@ export const useMarketResearchStore = create(
               isAnalyzing: false,
               summaryStatus: "idle",
               reportId: null,
+              analysisError: null,
               validationError: {
                 rejectionReason: data.rejectionReason,
                 suggestedPrompt: data.suggestedPrompt ?? null,
@@ -156,12 +161,25 @@ export const useMarketResearchStore = create(
             });
             return { success: false, rejected: true };
           }
+          if (err?.response?.status === 402 && data?.code === "INSUFFICIENT_CREDITS") {
+            useAuthStore.getState().updateUserCredits(data?.subscription ?? null);
+            set({
+              isValidating: false,
+              isAnalyzing: false,
+              isAnalysisComplete: false,
+              summaryStatus: "idle",
+              reportId: null,
+              analysisError: data?.error ?? "At least 2 credits are required to start a report",
+            });
+            return { success: false, rejected: false, insufficientCredits: true };
+          }
           set({
             isValidating: false,
             isAnalyzing: false,
             isAnalysisComplete: false,
             summaryStatus: "failed",
             validationError: null,
+            analysisError: null,
             competitors: [],
             report: null,
             competitorTaskMap: {},
@@ -184,6 +202,7 @@ export const useMarketResearchStore = create(
           idea,
           regions,
           reportId,
+          analysisError: null,
           isAnalyzing: true,
           isAnalysisComplete: false,
           summaryStatus: "finding-competitors",
@@ -196,7 +215,8 @@ export const useMarketResearchStore = create(
         });
 
         try {
-          await restartMarketResearchAnalysis(reportId, idea, regions);
+          const response = await restartMarketResearchAnalysis(reportId, idea, regions);
+          useAuthStore.getState().updateUserCredits(response?.data?.subscription ?? null);
           useProfileStore.getState().upsertAnalysis({
             id: reportId,
             idea,
@@ -206,7 +226,18 @@ export const useMarketResearchStore = create(
             status: "analyzing",
           });
           return true;
-        } catch {
+        } catch (err) {
+          if (err?.response?.status === 402 && err?.response?.data?.code === "INSUFFICIENT_CREDITS") {
+            useAuthStore.getState().updateUserCredits(err.response.data?.subscription ?? null);
+            set({
+              isAnalyzing: false,
+              isAnalysisComplete: false,
+              summaryStatus: "idle",
+              analysisError:
+                err.response.data?.error ?? "At least 2 credits are required to start a report",
+            });
+            return false;
+          }
           set({
             isAnalyzing: false,
             isAnalysisComplete: false,
@@ -254,6 +285,7 @@ export const useMarketResearchStore = create(
           reportId: null,
           idea: "",
           regions: null,
+          analysisError: null,
           isAnalyzing: false,
           isAnalysisComplete: false,
           summaryStatus: "idle",
@@ -282,7 +314,10 @@ export const useMarketResearchStore = create(
           const competitorTasks = response?.data?.competitorTasks ?? [];
           const competitorProfiles = response?.data?.competitors ?? [];
           const tasks = response?.data?.tasks ?? [];
+          const subscription = response?.data?.subscription ?? null;
           const status = session?.state?.status ?? report?.status ?? "idle";
+
+          useAuthStore.getState().updateUserCredits(subscription);
 
           const profileMap = new Map(
             competitorProfiles.filter((entry) => entry?.id).map((entry) => [entry.id, entry]),
@@ -355,6 +390,7 @@ export const useMarketResearchStore = create(
             competitors,
             competitorTaskMap,
             activityEvents: buildHydratedActivityEvents(tasks, competitors, status),
+            analysisError: null,
             isAnalyzing: status === "analyzing",
             isAnalysisComplete: status === "complete" || status === "completed",
             summaryStatus:

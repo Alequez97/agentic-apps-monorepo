@@ -77,6 +77,7 @@ const taskHandlersByType = createTaskHandlersByType({
   taskScheduler: taskQueue,
   taskEventPublisher,
   marketResearchRepository,
+  subscriptionService,
 });
 
 const orchestrator = new TaskOrchestrator({

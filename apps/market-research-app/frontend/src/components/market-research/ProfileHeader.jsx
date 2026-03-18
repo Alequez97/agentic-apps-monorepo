@@ -75,7 +75,19 @@ export function ProfileHeader({ user, onSignOut }) {
               fontWeight="700"
               letterSpacing="0.06em"
             >
-              FREE
+              {String(user.plan ?? "free").toUpperCase()}
+            </Badge>
+            <Badge
+              px={2}
+              py={0.5}
+              borderRadius="20px"
+              bg="#ecfeff"
+              color="#0f766e"
+              fontSize="10px"
+              fontWeight="700"
+              letterSpacing="0.04em"
+            >
+              {user.creditsRemaining ?? 0} CREDITS LEFT
             </Badge>
           </HStack>
 

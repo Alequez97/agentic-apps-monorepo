@@ -113,6 +113,7 @@ function TabBar({ active, onChange, activityCount, isAnalyzing }) {
 export function AnalysisPage() {
   const [activeTab, setActiveTab] = useState("competitors");
   const idea = useMarketResearchStore((s) => s.idea);
+  const regions = useMarketResearchStore((s) => s.regions);
   const activityEvents = useMarketResearchStore((s) => s.activityEvents);
   const isAnalyzing = useMarketResearchStore((s) => s.isAnalyzing);
   const isAnalysisComplete = useMarketResearchStore((s) => s.isAnalysisComplete);
@@ -151,6 +152,36 @@ export function AnalysisPage() {
               </Text>
             </Text>
           )}
+          <HStack gap={1.5} mt={1} flexWrap="wrap">
+            {regions === null ? (
+              <Text
+                fontSize="11px"
+                fontWeight="600"
+                color="#6366f1"
+                bg="#eef2ff"
+                px={2}
+                py={0.5}
+                borderRadius="6px"
+              >
+                Worldwide
+              </Text>
+            ) : (
+              regions.map((r) => (
+                <Text
+                  key={r}
+                  fontSize="11px"
+                  fontWeight="600"
+                  color="#6366f1"
+                  bg="#eef2ff"
+                  px={2}
+                  py={0.5}
+                  borderRadius="6px"
+                >
+                  {r}
+                </Text>
+              ))
+            )}
+          </HStack>
         </VStack>
 
         {selectedCompetitor ? (
