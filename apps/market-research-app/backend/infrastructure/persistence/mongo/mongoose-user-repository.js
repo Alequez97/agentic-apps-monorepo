@@ -110,6 +110,15 @@ export async function createMongoUserRepository({ uri, dbName }) {
       return User.findOne({ userId }).lean();
     },
 
+    async updateUser(userId, updates = {}) {
+      assertValidUserId(userId);
+      return User.findOneAndUpdate(
+        { userId },
+        { $set: updates },
+        { new: true },
+      ).lean();
+    },
+
     async listUsers({ limit = null, skip = 0 } = {}) {
       const q = User.find({}).sort({ lastSeenAt: -1 }).skip(skip);
       if (limit != null) q.limit(limit);

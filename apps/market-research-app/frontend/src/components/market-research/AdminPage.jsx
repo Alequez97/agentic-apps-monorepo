@@ -1,22 +1,36 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import {
+  Badge,
+  Box,
+  Button,
+  Flex,
+  Grid,
+  HStack,
+  Spinner,
+  Stack,
+  Text,
+  VStack,
+} from "@chakra-ui/react";
+import { ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react";
+import { useNavigate, useParams } from "react-router-dom";
+import {
+  getSessionDetail,
+  getSessions,
+  getUserDetail,
+  getUsers,
+} from "../../api/admin";
 import { useAuthStore } from "../../store/useAuthStore";
-import { getUsers, getSessions } from "../../api/admin";
-import { Badge, Box, Button, Flex, HStack, Spinner, Table, Tabs, Text } from "@chakra-ui/react";
-import { useNavigate } from "react-router-dom";
 
-// ─── Design tokens ──────────────────────────────────────────────────────────
 const BG = "#f8fafc";
 const CARD_BG = "#ffffff";
 const BORDER = "#e2e8f0";
-const TH_BG = "#f8fafc";
 const TEXT_PRIMARY = "#0f172a";
 const TEXT_SECONDARY = "#64748b";
 const TEXT_MUTED = "#94a3b8";
 const ACCENT = "#6366f1";
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
 function fmtDate(ts) {
-  if (!ts) return "—";
+  if (!ts) return "-";
   return new Date(ts).toLocaleString(undefined, {
     month: "short",
     day: "numeric",
@@ -26,22 +40,46 @@ function fmtDate(ts) {
   });
 }
 
-// ─── StatCard ─────────────────────────────────────────────────────────────────
-function StatCard({ label, value, accent }) {
+function getStatusTone(status) {
+  if (status === "complete") return "green";
+  if (status === "failed" || status === "validation_failed") return "red";
+  if (status === "analyzing") return "blue";
+  return "gray";
+}
+
+function getValidationMeta(validation) {
+  if (!validation) {
+    return { label: "Not run", palette: "gray" };
+  }
+
+  if (validation.shouldContinue) {
+    return { label: "Passed", palette: "green" };
+  }
+
+  return { label: "Rejected", palette: "red" };
+}
+
+function SectionCard({ children, ...props }) {
   return (
     <Box
-      flex="1"
-      minW="140px"
       bg={CARD_BG}
       border="1px solid"
       borderColor={BORDER}
-      borderRadius="12px"
-      px={5}
-      py={4}
+      borderRadius="16px"
+      p={{ base: 4, md: 5 }}
+      {...props}
     >
+      {children}
+    </Box>
+  );
+}
+
+function StatCard({ label, value, accent }) {
+  return (
+    <SectionCard>
       <Text
         fontSize="11px"
-        fontWeight="600"
+        fontWeight="700"
         color={TEXT_MUTED}
         textTransform="uppercase"
         letterSpacing="0.06em"
@@ -50,87 +88,280 @@ function StatCard({ label, value, accent }) {
         {label}
       </Text>
       <Text fontSize="26px" fontWeight="800" color={accent || TEXT_PRIMARY} letterSpacing="-0.02em">
-        {value ?? "—"}
+        {value ?? "-"}
       </Text>
-    </Box>
+    </SectionCard>
   );
 }
 
-// ─── Table wrapper card ───────────────────────────────────────────────────────
-function TableCard({ children }) {
+function Label({ children }) {
   return (
-    <Box
-      bg={CARD_BG}
-      border="1px solid"
-      borderColor={BORDER}
-      borderRadius="12px"
-      overflow="hidden"
-      mt={4}
-    >
-      {children}
-    </Box>
-  );
-}
-
-// ─── Column header ────────────────────────────────────────────────────────────
-function TH({ children }) {
-  return (
-    <Table.ColumnHeader
-      bg={TH_BG}
-      fontWeight="600"
-      color={TEXT_MUTED}
+    <Text
       fontSize="11px"
+      fontWeight="700"
+      color={TEXT_MUTED}
       textTransform="uppercase"
       letterSpacing="0.06em"
-      py={3}
-      px={4}
-      borderBottom="1px solid"
-      borderColor={BORDER}
+      mb={1}
     >
       {children}
-    </Table.ColumnHeader>
+    </Text>
   );
 }
 
-// ─── Table pagination ─────────────────────────────────────────────────────────
-function TablePager({ page, totalPages, onChange }) {
+function MetaItem({ label, value, children }) {
   return (
-    <Flex align="center" justify="space-between" mt={4} px={1}>
-      <Text fontSize="13px" color={TEXT_MUTED}>
-        Page{" "}
-        <Text as="span" fontWeight="700" color={TEXT_PRIMARY}>
-          {page}
-        </Text>{" "}
-        of {totalPages}
-      </Text>
-      <HStack gap={2}>
-        <Button
-          size="sm"
-          variant="outline"
-          disabled={page === 1}
-          onClick={() => onChange(Math.max(1, page - 1))}
-          borderColor={BORDER}
-          color={TEXT_SECONDARY}
-        >
-          ← Prev
-        </Button>
-        <Button
-          size="sm"
-          variant="outline"
-          disabled={page === totalPages}
-          onClick={() => onChange(Math.min(totalPages, page + 1))}
-          borderColor={BORDER}
-          color={TEXT_SECONDARY}
-        >
-          Next →
-        </Button>
-      </HStack>
-    </Flex>
+    <Box minW={0}>
+      <Label>{label}</Label>
+      {children || (
+        <Text fontSize="14px" color={TEXT_PRIMARY} lineHeight="1.6" wordBreak="break-word">
+          {value ?? "-"}
+        </Text>
+      )}
+    </Box>
   );
 }
 
-// ─── UsersTable ───────────────────────────────────────────────────────────────
-function UsersTable({ onTotals }) {
+function LoadingCard() {
+  return (
+    <SectionCard>
+      <Flex justify="center" py={10}>
+        <Spinner color={ACCENT} />
+      </Flex>
+    </SectionCard>
+  );
+}
+
+function EmptyCard({ children }) {
+  return (
+    <SectionCard>
+      <Text fontSize="14px" color={TEXT_MUTED}>
+        {children}
+      </Text>
+    </SectionCard>
+  );
+}
+
+function ClickableListCard({ children, onClick }) {
+  return (
+    <SectionCard
+      role="button"
+      tabIndex={0}
+      cursor="pointer"
+      transition="transform 0.14s ease, border-color 0.14s ease, box-shadow 0.14s ease"
+      _hover={{
+        borderColor: "#c7d2fe",
+        boxShadow: "0 18px 40px rgba(99, 102, 241, 0.08)",
+        transform: "translateY(-1px)",
+      }}
+      _focusVisible={{
+        outline: "2px solid #818cf8",
+        outlineOffset: "2px",
+      }}
+      onClick={onClick}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          onClick?.();
+        }
+      }}
+    >
+      {children}
+    </SectionCard>
+  );
+}
+
+function PanelTabs({ value, onChange }) {
+  return (
+    <HStack gap={2} flexWrap="wrap">
+      {[
+        ["users", "Users"],
+        ["sessions", "Sessions"],
+      ].map(([tabValue, label]) => (
+        <Button
+          key={tabValue}
+          size="sm"
+          borderRadius="999px"
+          px={4}
+          bg={value === tabValue ? ACCENT : "white"}
+          color={value === tabValue ? "white" : TEXT_SECONDARY}
+          border="1px solid"
+          borderColor={value === tabValue ? ACCENT : BORDER}
+          _hover={{ bg: value === tabValue ? ACCENT : "#eef2ff" }}
+          onClick={() => onChange(tabValue)}
+        >
+          {label}
+        </Button>
+      ))}
+    </HStack>
+  );
+}
+
+function BackButton({ onClick, children = "Back" }) {
+  return (
+    <Button
+      variant="ghost"
+      size="sm"
+      color={TEXT_SECONDARY}
+      pl={0}
+      _hover={{ bg: "transparent", color: TEXT_PRIMARY }}
+      onClick={onClick}
+    >
+      <ArrowLeft size={14} />
+      <Text ml={2}>{children}</Text>
+    </Button>
+  );
+}
+
+function PaginationBar({ page, totalPages, onChange }) {
+  if (totalPages <= 1) {
+    return null;
+  }
+
+  const pages = [];
+  for (let value = 1; value <= totalPages; value += 1) {
+    if (
+      value === 1 ||
+      value === totalPages ||
+      Math.abs(value - page) <= 1
+    ) {
+      pages.push(value);
+      continue;
+    }
+
+    const last = pages[pages.length - 1];
+    if (last !== "...") {
+      pages.push("...");
+    }
+  }
+
+  return (
+    <SectionCard p={{ base: 3, md: 4 }}>
+      <Flex justify="space-between" align="center" gap={3} flexWrap="wrap">
+        <Box>
+          <Text fontSize="12px" fontWeight="700" color={TEXT_MUTED} textTransform="uppercase" letterSpacing="0.06em">
+            Pagination
+          </Text>
+          <Text fontSize="14px" color={TEXT_SECONDARY} mt={1}>
+            Page {page} of {totalPages}
+          </Text>
+        </Box>
+
+        <HStack gap={2} flexWrap="wrap" justify={{ base: "flex-start", md: "flex-end" }}>
+          <Button
+            size="sm"
+            variant="outline"
+            borderRadius="999px"
+            borderColor={BORDER}
+            color={TEXT_SECONDARY}
+            disabled={page === 1}
+            onClick={() => onChange(Math.max(1, page - 1))}
+          >
+            <ChevronLeft size={14} />
+            Prev
+          </Button>
+
+          {pages.map((entry, index) =>
+            entry === "..." ? (
+              <Text key={`ellipsis-${index}`} px={1.5} color={TEXT_MUTED} fontSize="13px">
+                ...
+              </Text>
+            ) : (
+              <Button
+                key={entry}
+                size="sm"
+                minW="36px"
+                borderRadius="999px"
+                px={3}
+                bg={entry === page ? ACCENT : "white"}
+                color={entry === page ? "white" : TEXT_SECONDARY}
+                border="1px solid"
+                borderColor={entry === page ? ACCENT : BORDER}
+                _hover={{ bg: entry === page ? ACCENT : "#eef2ff" }}
+                onClick={() => onChange(entry)}
+              >
+                {entry}
+              </Button>
+            ),
+          )}
+
+          <Button
+            size="sm"
+            variant="outline"
+            borderRadius="999px"
+            borderColor={BORDER}
+            color={TEXT_SECONDARY}
+            disabled={page === totalPages}
+            onClick={() => onChange(Math.min(totalPages, page + 1))}
+          >
+            Next
+            <ChevronRight size={14} />
+          </Button>
+        </HStack>
+      </Flex>
+    </SectionCard>
+  );
+}
+
+function SessionSummaryCard({ session, onOpen }) {
+  const validationMeta = getValidationMeta(session.state?.promptValidation);
+
+  return (
+    <ClickableListCard onClick={onOpen}>
+      <Stack gap={4}>
+        <Flex justify="space-between" align="start" gap={3} flexWrap="wrap">
+          <Box flex="1" minW="0">
+            <Text fontSize="16px" fontWeight="700" color={TEXT_PRIMARY} lineHeight="1.4">
+              {session.idea}
+            </Text>
+            <Text fontSize="12px" color={TEXT_MUTED} mt={1}>
+              Created {fmtDate(session.createdAt)}
+            </Text>
+          </Box>
+          <Box color={TEXT_MUTED} pt={1}>
+            <ChevronRight size={16} />
+          </Box>
+        </Flex>
+
+        <HStack gap={2} flexWrap="wrap">
+          <Badge colorPalette={getStatusTone(session.state?.status)} borderRadius="999px" px={2.5}>
+            {session.state?.status || "pending"}
+          </Badge>
+          <Badge colorPalette={validationMeta.palette} borderRadius="999px" px={2.5}>
+            Validation {validationMeta.label}
+          </Badge>
+          <Badge colorPalette="gray" borderRadius="999px" px={2.5}>
+            {(session.state?.competitorCount ?? 0).toString()} competitors
+          </Badge>
+        </HStack>
+
+        <Grid templateColumns={{ base: "1fr", md: "1fr 1fr" }} gap={4}>
+          <MetaItem label="Report Summary" value={session.reportSummary || "No summary yet"} />
+          <MetaItem label="Prompt Validation">
+            <VStack align="start" gap={1}>
+              <Text fontSize="14px" color={TEXT_PRIMARY}>
+                {validationMeta.label}
+              </Text>
+              {session.state?.promptValidation?.rejectionReason ? (
+                <Text fontSize="13px" color={TEXT_SECONDARY}>
+                  Reason: {session.state.promptValidation.rejectionReason}
+                </Text>
+              ) : null}
+              {session.state?.promptValidation?.suggestedPrompt ? (
+                <Text fontSize="13px" color={ACCENT} fontStyle="italic" wordBreak="break-word">
+                  {session.state.promptValidation.suggestedPrompt}
+                </Text>
+              ) : null}
+            </VStack>
+          </MetaItem>
+        </Grid>
+      </Stack>
+    </ClickableListCard>
+  );
+}
+
+function UsersPane({ onTotals }) {
+  const navigate = useNavigate();
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
@@ -146,99 +377,56 @@ function UsersTable({ onTotals }) {
       })
       .catch(console.error)
       .finally(() => setLoading(false));
-  }, [page]);
+  }, [page, onTotals]);
+
+  if (loading) return <LoadingCard />;
+  if (users.length === 0) return <EmptyCard>No users found.</EmptyCard>;
 
   return (
-    <Box>
-      <TableCard>
-        {loading ? (
-          <Flex justify="center" py={12}>
-            <Spinner color={ACCENT} />
+    <Stack gap={4}>
+      {users.map((user) => (
+        <ClickableListCard key={user.userId} onClick={() => navigate(`/admin/users/${user.userId}`)}>
+          <Flex justify="space-between" align="start" gap={3} flexWrap="wrap">
+            <Box flex="1" minW="0">
+              <Text fontSize="17px" fontWeight="700" color={TEXT_PRIMARY}>
+                {user.name || "-"}
+              </Text>
+              <Text fontSize="13px" color={TEXT_SECONDARY} mt={1} wordBreak="break-word">
+                {user.email}
+              </Text>
+            </Box>
+            <Box color={TEXT_MUTED} pt={1}>
+              <ChevronRight size={16} />
+            </Box>
           </Flex>
-        ) : users.length === 0 ? (
-          <Flex justify="center" py={12}>
-            <Text color={TEXT_MUTED} fontSize="14px">
-              No users found
-            </Text>
-          </Flex>
-        ) : (
-          <Table.Root>
-            <Table.Header>
-              <Table.Row>
-                <TH>Name</TH>
-                <TH>Email</TH>
-                <TH>Plan</TH>
-                <TH>Credits</TH>
-                <TH>Last Seen</TH>
-                <TH>Role</TH>
-              </Table.Row>
-            </Table.Header>
-            <Table.Body>
-              {users.map((user) => (
-                <Table.Row key={user.userId} _hover={{ bg: "#f1f5f9" }}>
-                  <Table.Cell px={4} py={3} fontWeight="600" color={TEXT_PRIMARY} fontSize="13px">
-                    {user.name || "—"}
-                  </Table.Cell>
-                  <Table.Cell px={4} py={3} color={TEXT_SECONDARY} fontSize="13px">
-                    {user.email}
-                  </Table.Cell>
-                  <Table.Cell px={4} py={3}>
-                    <Badge
-                      colorPalette={user.plan === "pro" ? "purple" : "gray"}
-                      borderRadius="6px"
-                      px={2}
-                      fontSize="11px"
-                      fontWeight="700"
-                      textTransform="uppercase"
-                    >
-                      {user.plan}
-                    </Badge>
-                  </Table.Cell>
-                  <Table.Cell px={4} py={3} fontSize="13px">
-                    <Text as="span" fontWeight="700" color={TEXT_PRIMARY}>
-                      {user.creditsRemaining}
-                    </Text>
-                    <Text as="span" color={TEXT_MUTED}>
-                      {" "}
-                      / {user.creditsTotal}
-                    </Text>
-                  </Table.Cell>
-                  <Table.Cell px={4} py={3} fontSize="12px" color={TEXT_MUTED}>
-                    {fmtDate(user.lastSeenAt)}
-                  </Table.Cell>
-                  <Table.Cell px={4} py={3}>
-                    {user.isAdmin ? (
-                      <Badge
-                        colorPalette="red"
-                        borderRadius="6px"
-                        px={2}
-                        fontSize="11px"
-                        fontWeight="700"
-                        textTransform="uppercase"
-                      >
-                        Admin
-                      </Badge>
-                    ) : (
-                      <Text fontSize="12px" color={TEXT_MUTED}>
-                        —
-                      </Text>
-                    )}
-                  </Table.Cell>
-                </Table.Row>
-              ))}
-            </Table.Body>
-          </Table.Root>
-        )}
-      </TableCard>
-      {!loading && pagination.totalPages > 1 && (
-        <TablePager page={page} totalPages={pagination.totalPages} onChange={setPage} />
-      )}
-    </Box>
+
+          <HStack gap={2} mt={4} flexWrap="wrap">
+            <Badge colorPalette={user.plan === "pro" ? "purple" : "gray"} borderRadius="999px" px={2.5}>
+              {user.plan}
+            </Badge>
+            {user.isAdmin ? (
+              <Badge colorPalette="red" borderRadius="999px" px={2.5}>
+                Admin
+              </Badge>
+            ) : null}
+          </HStack>
+
+          <Grid templateColumns={{ base: "1fr 1fr", md: "repeat(4, 1fr)" }} gap={4} mt={4}>
+            <MetaItem label="Credits" value={`${user.creditsRemaining} / ${user.creditsTotal}`} />
+            <MetaItem label="Subscription" value={user.subscriptionStatus || "inactive"} />
+            <MetaItem label="Last Seen" value={fmtDate(user.lastSeenAt)} />
+            <MetaItem label="User Id" value={user.userId} />
+          </Grid>
+        </ClickableListCard>
+      ))}
+
+      <PaginationBar page={page} totalPages={pagination.totalPages} onChange={setPage} />
+    </Stack>
   );
 }
 
-// ─── SessionsTable ────────────────────────────────────────────────────────────
-function SessionsTable({ onTotals }) {
+function SessionsPane({ onTotals }) {
+  const navigate = useNavigate();
   const [sessions, setSessions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
@@ -254,228 +442,266 @@ function SessionsTable({ onTotals }) {
       })
       .catch(console.error)
       .finally(() => setLoading(false));
-  }, [page]);
+  }, [page, onTotals]);
 
-  const statusColor = (s) =>
-    s === "complete"
-      ? "green"
-      : s === "failed" || s === "validation_failed"
-        ? "red"
-        : s === "analyzing"
-          ? "blue"
-          : "gray";
+  if (loading) return <LoadingCard />;
+  if (sessions.length === 0) return <EmptyCard>No sessions found.</EmptyCard>;
 
   return (
-    <Box>
-      <TableCard>
-        {loading ? (
-          <Flex justify="center" py={12}>
-            <Spinner color={ACCENT} />
-          </Flex>
-        ) : sessions.length === 0 ? (
-          <Flex justify="center" py={12}>
-            <Text color={TEXT_MUTED} fontSize="14px">
-              No sessions found
-            </Text>
-          </Flex>
-        ) : (
-          <Table.Root>
-            <Table.Header>
-              <Table.Row>
-                <TH>Idea</TH>
-                <TH>Status</TH>
-                <TH>Competitors</TH>
-                <TH>Validation</TH>
-                <TH>Created</TH>
-                <TH>Error</TH>
-              </Table.Row>
-            </Table.Header>
-            <Table.Body>
-              {sessions.map((session) => {
-                const pv = session.state?.promptValidation;
-                return (
-                  <Table.Row key={session.sessionId} _hover={{ bg: "#f1f5f9" }}>
-                    <Table.Cell px={4} py={3} maxW="240px" truncate title={session.idea}>
-                      <Text fontSize="13px" color={TEXT_PRIMARY} fontWeight="500">
-                        {session.idea}
-                      </Text>
-                    </Table.Cell>
-                    <Table.Cell px={4} py={3}>
-                      <Badge
-                        colorPalette={statusColor(session.state?.status)}
-                        borderRadius="6px"
-                        px={2}
-                        fontSize="11px"
-                        fontWeight="700"
-                        textTransform="uppercase"
-                      >
-                        {session.state?.status || "pending"}
-                      </Badge>
-                    </Table.Cell>
-                    <Table.Cell px={4} py={3} fontSize="13px" color={TEXT_SECONDARY}>
-                      {session.state?.competitorCount ?? 0}
-                    </Table.Cell>
-                    <Table.Cell px={4} py={3}>
-                      {pv ? (
-                        <Badge
-                          colorPalette={pv.shouldContinue ? "green" : "red"}
-                          borderRadius="6px"
-                          px={2}
-                          fontSize="11px"
-                          fontWeight="700"
-                          textTransform="uppercase"
-                        >
-                          {pv.shouldContinue ? "Passed" : "Rejected"}
-                        </Badge>
-                      ) : (
-                        <Text fontSize="12px" color={TEXT_MUTED}>
-                          —
-                        </Text>
-                      )}
-                    </Table.Cell>
-                    <Table.Cell px={4} py={3} fontSize="12px" color={TEXT_MUTED}>
-                      {fmtDate(session.createdAt)}
-                    </Table.Cell>
-                    <Table.Cell px={4} py={3} maxW="200px" truncate title={session.state?.error}>
-                      {session.state?.error ? (
-                        <Text fontSize="12px" color="#ef4444">
-                          {session.state.error}
-                        </Text>
-                      ) : (
-                        <Text fontSize="12px" color={TEXT_MUTED}>
-                          —
-                        </Text>
-                      )}
-                    </Table.Cell>
-                  </Table.Row>
-                );
-              })}
-            </Table.Body>
-          </Table.Root>
-        )}
-      </TableCard>
-      {!loading && pagination.totalPages > 1 && (
-        <TablePager page={page} totalPages={pagination.totalPages} onChange={setPage} />
-      )}
-    </Box>
+    <Stack gap={4}>
+      {sessions.map((session) => {
+        const validationMeta = getValidationMeta(session.state?.promptValidation);
+        return (
+          <ClickableListCard
+            key={session.sessionId}
+            onClick={() => navigate(`/admin/sessions/${session.sessionId}`)}
+          >
+            <Flex justify="space-between" align="start" gap={3} flexWrap="wrap">
+              <Box flex="1" minW="0">
+                <Text fontSize="16px" fontWeight="700" color={TEXT_PRIMARY} lineHeight="1.4">
+                  {session.idea}
+                </Text>
+                <Text fontSize="12px" color={TEXT_MUTED} mt={1}>
+                  {fmtDate(session.createdAt)}
+                </Text>
+              </Box>
+              <Box color={TEXT_MUTED} pt={1}>
+                <ChevronRight size={16} />
+              </Box>
+            </Flex>
+
+            <HStack gap={2} mt={4} flexWrap="wrap">
+              <Badge colorPalette={getStatusTone(session.state?.status)} borderRadius="999px" px={2.5}>
+                {session.state?.status || "pending"}
+              </Badge>
+              <Badge colorPalette={validationMeta.palette} borderRadius="999px" px={2.5}>
+                Validation {validationMeta.label}
+              </Badge>
+              <Badge colorPalette="gray" borderRadius="999px" px={2.5}>
+                {(session.state?.competitorCount ?? 0).toString()} competitors
+              </Badge>
+            </HStack>
+
+            {session.state?.error ? (
+              <Text fontSize="13px" color="#dc2626" mt={4} wordBreak="break-word">
+                {session.state.error}
+              </Text>
+            ) : null}
+          </ClickableListCard>
+        );
+      })}
+
+      <PaginationBar page={page} totalPages={pagination.totalPages} onChange={setPage} />
+    </Stack>
   );
 }
 
-// ─── PromptValidationsTable ───────────────────────────────────────────────────
-function PromptValidationsTable() {
-  const [sessions, setSessions] = useState([]);
+function UserDetailPane({ userId }) {
+  const navigate = useNavigate();
+  const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [page, setPage] = useState(1);
-  const [pagination, setPagination] = useState({ totalPages: 1, total: 0 });
 
   useEffect(() => {
     setLoading(true);
-    getSessions(page, 100)
-      .then((res) => {
-        const withValidation = res.data.data.filter((s) => s.state?.promptValidation);
-        setSessions(withValidation);
-        setPagination(res.data.pagination);
-      })
+    getUserDetail(userId)
+      .then((res) => setData(res.data))
       .catch(console.error)
       .finally(() => setLoading(false));
-  }, [page]);
+  }, [userId]);
+
+  if (loading) return <LoadingCard />;
+  if (!data) return <EmptyCard>User not found.</EmptyCard>;
+
+  const { user, sessions } = data;
 
   return (
-    <Box>
-      <TableCard>
-        {loading ? (
-          <Flex justify="center" py={12}>
-            <Spinner color={ACCENT} />
-          </Flex>
-        ) : sessions.length === 0 ? (
-          <Flex justify="center" py={12}>
-            <Text color={TEXT_MUTED} fontSize="14px">
-              No prompt validation records found
+    <Stack gap={5}>
+      <BackButton onClick={() => navigate("/admin")}>Back to admin</BackButton>
+
+      <SectionCard>
+        <Flex justify="space-between" align="start" gap={3} flexWrap="wrap">
+          <Box flex="1" minW="0">
+            <Text fontSize="24px" fontWeight="800" color={TEXT_PRIMARY} letterSpacing="-0.02em">
+              {user.name || user.email}
             </Text>
-          </Flex>
+            <Text fontSize="14px" color={TEXT_SECONDARY} mt={1} wordBreak="break-word">
+              {user.email}
+            </Text>
+          </Box>
+          {user.isAdmin ? (
+            <Badge colorPalette="red" borderRadius="999px" px={3} py={1}>
+              Admin
+            </Badge>
+          ) : null}
+        </Flex>
+
+        <Grid templateColumns={{ base: "1fr 1fr", md: "repeat(4, 1fr)" }} gap={4} mt={5}>
+          <MetaItem label="Plan" value={user.plan} />
+          <MetaItem label="Credits" value={`${user.creditsRemaining} / ${user.creditsTotal}`} />
+          <MetaItem label="Last Seen" value={fmtDate(user.lastSeenAt)} />
+          <MetaItem label="User Id" value={user.userId} />
+        </Grid>
+      </SectionCard>
+
+      <Box>
+        <Text fontSize="18px" fontWeight="800" color={TEXT_PRIMARY} mb={3}>
+          Sessions and report summaries
+        </Text>
+        {sessions?.length ? (
+          <Stack gap={4}>
+            {sessions.map((session) => (
+              <SessionSummaryCard
+                key={session.sessionId}
+                session={session}
+                onOpen={() => navigate(`/admin/sessions/${session.sessionId}`)}
+              />
+            ))}
+          </Stack>
         ) : (
-          <Table.Root>
-            <Table.Header>
-              <Table.Row>
-                <TH>Idea</TH>
-                <TH>Result</TH>
-                <TH>Rejection Reason</TH>
-                <TH>Suggested Prompt</TH>
-                <TH>Validated At</TH>
-              </Table.Row>
-            </Table.Header>
-            <Table.Body>
-              {sessions.map((session) => {
-                const pv = session.state.promptValidation;
-                return (
-                  <Table.Row key={session.sessionId} _hover={{ bg: "#f1f5f9" }}>
-                    <Table.Cell px={4} py={3} maxW="220px" truncate title={session.idea}>
-                      <Text fontSize="13px" color={TEXT_PRIMARY} fontWeight="500">
-                        {session.idea}
-                      </Text>
-                    </Table.Cell>
-                    <Table.Cell px={4} py={3}>
-                      <Badge
-                        colorPalette={pv.shouldContinue ? "green" : "red"}
-                        borderRadius="6px"
-                        px={2}
-                        fontSize="11px"
-                        fontWeight="700"
-                        textTransform="uppercase"
-                      >
-                        {pv.shouldContinue ? "Passed" : "Rejected"}
-                      </Badge>
-                    </Table.Cell>
-                    <Table.Cell px={4} py={3}>
-                      {pv.rejectionReason ? (
-                        <Badge
-                          colorPalette="orange"
-                          borderRadius="6px"
-                          px={2}
-                          fontSize="11px"
-                          fontWeight="600"
-                          textTransform="uppercase"
-                        >
-                          {pv.rejectionReason}
-                        </Badge>
-                      ) : (
-                        <Text fontSize="12px" color={TEXT_MUTED}>
-                          —
-                        </Text>
-                      )}
-                    </Table.Cell>
-                    <Table.Cell px={4} py={3} maxW="280px" truncate title={pv.suggestedPrompt}>
-                      {pv.suggestedPrompt ? (
-                        <Text fontSize="12px" color={ACCENT} fontStyle="italic">
-                          {pv.suggestedPrompt}
-                        </Text>
-                      ) : (
-                        <Text fontSize="12px" color={TEXT_MUTED}>
-                          —
-                        </Text>
-                      )}
-                    </Table.Cell>
-                    <Table.Cell px={4} py={3} fontSize="12px" color={TEXT_MUTED}>
-                      {fmtDate(pv.validatedAt)}
-                    </Table.Cell>
-                  </Table.Row>
-                );
-              })}
-            </Table.Body>
-          </Table.Root>
+          <EmptyCard>No sessions found for this user.</EmptyCard>
         )}
-      </TableCard>
-      {!loading && pagination.totalPages > 1 && (
-        <TablePager page={page} totalPages={pagination.totalPages} onChange={setPage} />
-      )}
-    </Box>
+      </Box>
+    </Stack>
   );
 }
 
-// ─── AdminPage ────────────────────────────────────────────────────────────────
-export function AdminPage() {
-  const user = useAuthStore((s) => s.user);
+function SessionDetailPane({ sessionId }) {
   const navigate = useNavigate();
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    setLoading(true);
+    getSessionDetail(sessionId)
+      .then((res) => setData(res.data))
+      .catch(console.error)
+      .finally(() => setLoading(false));
+  }, [sessionId]);
+
+  if (loading) return <LoadingCard />;
+  if (!data) return <EmptyCard>Session not found.</EmptyCard>;
+
+  const { session, owner, subscription, opportunity, competitors } = data;
+  const validation = session.state?.promptValidation;
+  const validationMeta = getValidationMeta(validation);
+
+  return (
+    <Stack gap={5}>
+      <BackButton
+        onClick={() =>
+          owner?.userId ? navigate(`/admin/users/${owner.userId}`) : navigate("/admin")
+        }
+      >
+        {owner?.userId ? "Back to user" : "Back to admin"}
+      </BackButton>
+
+      <SectionCard>
+        <Flex justify="space-between" align="start" gap={3} flexWrap="wrap">
+          <Box flex="1" minW="0">
+            <Text fontSize="24px" fontWeight="800" color={TEXT_PRIMARY} letterSpacing="-0.02em">
+              {session.idea}
+            </Text>
+            <Text fontSize="13px" color={TEXT_MUTED} mt={1}>
+              Session {session.sessionId}
+            </Text>
+          </Box>
+          <HStack gap={2} flexWrap="wrap">
+            <Badge colorPalette={getStatusTone(session.state?.status)} borderRadius="999px" px={3}>
+              {session.state?.status || "pending"}
+            </Badge>
+            <Badge colorPalette={validationMeta.palette} borderRadius="999px" px={3}>
+              Validation {validationMeta.label}
+            </Badge>
+          </HStack>
+        </Flex>
+
+        <Grid templateColumns={{ base: "1fr", md: "1fr 1fr 1fr" }} gap={4} mt={5}>
+          <MetaItem label="Created" value={fmtDate(session.createdAt)} />
+          <MetaItem label="Competitors" value={session.state?.competitorCount ?? 0} />
+          <MetaItem
+            label="Owner"
+            value={owner ? `${owner.name || owner.email} (${subscription?.plan || "free"})` : "-"}
+          />
+        </Grid>
+
+        {session.state?.error ? (
+          <Box mt={5}>
+            <Label>Error</Label>
+            <Text fontSize="14px" color="#dc2626" wordBreak="break-word">
+              {session.state.error}
+            </Text>
+          </Box>
+        ) : null}
+      </SectionCard>
+
+      <Grid templateColumns={{ base: "1fr", lg: "1.2fr 0.8fr" }} gap={5}>
+        <SectionCard>
+          <Text fontSize="18px" fontWeight="800" color={TEXT_PRIMARY} mb={4}>
+            Report details
+          </Text>
+          <Stack gap={4}>
+            <MetaItem label="Opportunity Verdict" value={opportunity?.verdict || "Not available"} />
+            <MetaItem label="Opportunity Summary" value={opportunity?.summary || "No summary yet"} />
+            <MetaItem label="Prompt Validation">
+              <VStack align="start" gap={1}>
+                <Text fontSize="14px" color={TEXT_PRIMARY}>
+                  {validationMeta.label}
+                </Text>
+                {validation?.validatedAt ? (
+                  <Text fontSize="13px" color={TEXT_SECONDARY}>
+                    Checked {fmtDate(validation.validatedAt)}
+                  </Text>
+                ) : null}
+                {validation?.rejectionReason ? (
+                  <Text fontSize="13px" color={TEXT_SECONDARY}>
+                    Reason: {validation.rejectionReason}
+                  </Text>
+                ) : null}
+                {validation?.suggestedPrompt ? (
+                  <Text fontSize="13px" color={ACCENT} fontStyle="italic" wordBreak="break-word">
+                    {validation.suggestedPrompt}
+                  </Text>
+                ) : null}
+              </VStack>
+            </MetaItem>
+          </Stack>
+        </SectionCard>
+
+        <SectionCard>
+          <Text fontSize="18px" fontWeight="800" color={TEXT_PRIMARY} mb={4}>
+            Competitors
+          </Text>
+          {competitors?.length ? (
+            <VStack align="stretch" gap={3}>
+              {competitors.map((competitor) => (
+                <Box key={competitor.id} border="1px solid" borderColor={BORDER} borderRadius="12px" p={3}>
+                  <Text fontSize="14px" fontWeight="700" color={TEXT_PRIMARY}>
+                    {competitor.name || competitor.id}
+                  </Text>
+                  {competitor.website ? (
+                    <Text fontSize="12px" color={TEXT_SECONDARY} mt={1} wordBreak="break-word">
+                      {competitor.website}
+                    </Text>
+                  ) : null}
+                </Box>
+              ))}
+            </VStack>
+          ) : (
+            <Text fontSize="14px" color={TEXT_MUTED}>
+              No competitor details saved for this session.
+            </Text>
+          )}
+        </SectionCard>
+      </Grid>
+    </Stack>
+  );
+}
+
+export function AdminPage() {
+  const navigate = useNavigate();
+  const { userId, sessionId } = useParams();
+  const user = useAuthStore((state) => state.user);
+  const [tab, setTab] = useState("users");
   const [totals, setTotals] = useState({ users: null, sessions: null });
 
   useEffect(() => {
@@ -484,88 +710,51 @@ export function AdminPage() {
     }
   }, [user, navigate]);
 
+  const isDetailView = Boolean(userId || sessionId);
+
+  const totalsHandler = useMemo(
+    () => (nextTotals) => setTotals((current) => ({ ...current, ...nextTotals })),
+    [],
+  );
+
   if (!user || !user.isAdmin) return null;
 
   return (
-    <Box minH="100vh" bg={BG} pt="116px" pb="80px">
+    <Box minH="100vh" bg={BG} pt={{ base: "96px", md: "116px" }} pb="80px">
       <Box maxW="1200px" mx="auto" px={{ base: 4, md: 6 }}>
-        {/* Header */}
-        <Flex align="center" justify="space-between" mb={6}>
-          <Box>
-            <Text fontSize="22px" fontWeight="800" color={TEXT_PRIMARY} letterSpacing="-0.02em">
-              Admin Panel
-            </Text>
-            <Text fontSize="13px" color={TEXT_MUTED} mt={0.5}>
-              Manage users, sessions and prompt quality.
-            </Text>
-          </Box>
-          <Badge
-            colorPalette="red"
-            borderRadius="8px"
-            px={3}
-            py={1}
-            fontSize="12px"
-            fontWeight="700"
-            textTransform="uppercase"
-            letterSpacing="0.05em"
-          >
-            Admin
-          </Badge>
-        </Flex>
+        {!isDetailView ? (
+          <Stack gap={6}>
+            <Flex justify="space-between" align="start" gap={3} flexWrap="wrap">
+              <Box>
+                <Text fontSize="24px" fontWeight="800" color={TEXT_PRIMARY} letterSpacing="-0.02em">
+                  Admin Panel
+                </Text>
+                <Text fontSize="13px" color={TEXT_MUTED} mt={1}>
+                  Drill into users, sessions, report summaries, and prompt validation from one place.
+                </Text>
+              </Box>
+              <Badge colorPalette="red" borderRadius="999px" px={3} py={1}>
+                Admin
+              </Badge>
+            </Flex>
 
-        {/* Stats row */}
-        <Flex gap={3} mb={6} flexWrap="wrap">
-          <StatCard label="Total Users" value={totals.users} accent={ACCENT} />
-          <StatCard label="Total Sessions" value={totals.sessions} />
-        </Flex>
+            <Grid templateColumns={{ base: "1fr 1fr", md: "repeat(2, 1fr)" }} gap={4}>
+              <StatCard label="Total Users" value={totals.users} accent={ACCENT} />
+              <StatCard label="Total Sessions" value={totals.sessions} />
+            </Grid>
 
-        {/* Tabs */}
-        <Tabs.Root defaultValue="users">
-          <Tabs.List borderBottom="2px solid" borderColor={BORDER} gap={0} bg="transparent">
-            <Tabs.Trigger
-              value="users"
-              fontWeight="600"
-              fontSize="14px"
-              color={TEXT_SECONDARY}
-              px={4}
-              pb={3}
-              _selected={{ color: TEXT_PRIMARY, borderBottom: `2px solid ${ACCENT}`, mb: "-2px" }}
-            >
-              Users
-            </Tabs.Trigger>
-            <Tabs.Trigger
-              value="sessions"
-              fontWeight="600"
-              fontSize="14px"
-              color={TEXT_SECONDARY}
-              px={4}
-              pb={3}
-              _selected={{ color: TEXT_PRIMARY, borderBottom: `2px solid ${ACCENT}`, mb: "-2px" }}
-            >
-              Sessions
-            </Tabs.Trigger>
-            <Tabs.Trigger
-              value="validations"
-              fontWeight="600"
-              fontSize="14px"
-              color={TEXT_SECONDARY}
-              px={4}
-              pb={3}
-              _selected={{ color: TEXT_PRIMARY, borderBottom: `2px solid ${ACCENT}`, mb: "-2px" }}
-            >
-              Prompt Validations
-            </Tabs.Trigger>
-          </Tabs.List>
-          <Tabs.Content value="users" pt={2}>
-            <UsersTable onTotals={(t) => setTotals((prev) => ({ ...prev, ...t }))} />
-          </Tabs.Content>
-          <Tabs.Content value="sessions" pt={2}>
-            <SessionsTable onTotals={(t) => setTotals((prev) => ({ ...prev, ...t }))} />
-          </Tabs.Content>
-          <Tabs.Content value="validations" pt={2}>
-            <PromptValidationsTable />
-          </Tabs.Content>
-        </Tabs.Root>
+            <PanelTabs value={tab} onChange={setTab} />
+
+            {tab === "users" ? (
+              <UsersPane onTotals={totalsHandler} />
+            ) : (
+              <SessionsPane onTotals={totalsHandler} />
+            )}
+          </Stack>
+        ) : null}
+
+        {userId ? <UserDetailPane userId={userId} /> : null}
+        {sessionId ? <SessionDetailPane sessionId={sessionId} /> : null}
       </Box>
     </Box>
   );

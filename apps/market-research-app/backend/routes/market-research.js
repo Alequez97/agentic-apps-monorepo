@@ -287,10 +287,7 @@ export function createMarketResearchRouter({
       const creditCheck = await subscriptionService.canStartReport(req.userId);
       const availableCreditsAfterReservations =
         (creditCheck.subscription?.creditsRemaining ?? 0) - reservedCredits;
-      if (
-        !creditCheck.allowed ||
-        availableCreditsAfterReservations < REQUIRED_REPORT_CREDITS
-      ) {
+      if (!creditCheck.allowed || availableCreditsAfterReservations < REQUIRED_REPORT_CREDITS) {
         return res.status(402).json({
           error: `At least ${REQUIRED_REPORT_CREDITS} credits are required to start a report`,
           code: "INSUFFICIENT_CREDITS",
@@ -539,12 +536,10 @@ export function createMarketResearchRouter({
       const { reportId } = req.params;
 
       try {
-        const reportSession = await requireOwnedReport(
-          req,
-          res,
-          reportId,
-          marketResearchRepository,
-        );
+        const [reportSession, subscription] = await Promise.all([
+          requireOwnedReport(req, res, reportId, marketResearchRepository),
+          subscriptionService.getSubscription(req.userId),
+        ]);
         if (!reportSession) return;
 
         const report = await marketResearchRepository.getReport(reportId);

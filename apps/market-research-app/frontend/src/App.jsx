@@ -35,6 +35,8 @@ export default function App() {
             <Route path="/summary" element={<AnalysisSummaryPage />} />
             <Route path="/profile" element={<ProfilePage />} />
             <Route path="/admin" element={<AdminPage />} />
+            <Route path="/admin/users/:userId" element={<AdminPage />} />
+            <Route path="/admin/sessions/:sessionId" element={<AdminPage />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Route>

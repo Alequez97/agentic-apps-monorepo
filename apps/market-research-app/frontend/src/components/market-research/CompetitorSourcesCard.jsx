@@ -22,7 +22,7 @@ function SourceSection({ title, items }) {
   }
 
   return (
-    <Box>
+    <Box minW={0}>
       <Text
         fontSize="10px"
         fontWeight="700"
@@ -42,8 +42,18 @@ function SourceSection({ title, items }) {
             borderRadius="10px"
             p={3}
             bg="#f8fafc"
+            minW={0}
+            overflow="hidden"
           >
-            <Text fontSize="12px" color="#334155" lineHeight="1.55" mb={2}>
+            <Text
+              fontSize="12px"
+              color="#334155"
+              lineHeight="1.55"
+              mb={2}
+              whiteSpace="normal"
+              wordBreak="break-word"
+              overflowWrap="anywhere"
+            >
               {item.claim}
             </Text>
             <Button
@@ -58,16 +68,27 @@ function SourceSection({ title, items }) {
               color="#374151"
               borderColor="#dbe4ee"
               borderRadius="7px"
-              h="26px"
+              h="auto"
               px={2.5}
+              py={1.5}
+              maxW="100%"
+              whiteSpace="normal"
+              wordBreak="break-word"
+              overflowWrap="anywhere"
+              textAlign="left"
+              justifyContent="flex-start"
               _hover={{
                 bg: "#ffffff",
                 borderColor: "#6366f1",
                 color: "#6366f1",
               }}
             >
-              {item.label}
-              <ExternalLink size={10} style={{ marginLeft: "4px" }} />
+              <Text as="span" minW={0}>
+                {item.label}
+              </Text>
+              <Box as="span" flexShrink={0} ml="4px">
+                <ExternalLink size={10} />
+              </Box>
             </Button>
           </Box>
         ))}
@@ -94,6 +115,8 @@ export function CompetitorSourcesCard({ sources }) {
       borderWidth="1px"
       borderColor="#e2e8f0"
       p={5}
+      minW={0}
+      overflow="hidden"
     >
       <SectionLabel>Evidence & sources</SectionLabel>
       <Grid templateColumns={{ base: "1fr", md: "1fr 1fr" }} gap={4}>

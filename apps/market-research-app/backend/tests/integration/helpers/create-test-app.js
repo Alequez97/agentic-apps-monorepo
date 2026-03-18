@@ -1,40 +1,49 @@
-import os from "node:os";
-import path from "node:path";
-import fs from "node:fs/promises";
 import jwt from "jsonwebtoken";
+import { randomUUID } from "node:crypto";
 
 process.env.PORT ??= "3101";
 process.env.JWT_SECRET ??= "test-secret";
-process.env.MR_DATA_DIR ??= path.join(os.tmpdir(), "market-research-vitest-config");
 
 export async function createIntegrationTestContext() {
-  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "market-research-vitest-"));
-
   const [
     requestModule,
+    { MongoMemoryServer },
     { createHttpApp },
-    { createFileMarketResearchRepository },
-    { createFileSubscriptionRepository },
-    { createFileUserRepository },
+    { createMongoMarketResearchRepository },
+    { createMongoSubscriptionRepository },
+    { createMongoUserRepository },
     { createSubscriptionService },
     { marketResearchInitialHandler },
     { marketResearchSummaryHandler },
   ] = await Promise.all([
     import("supertest"),
+    import("mongodb-memory-server"),
     import("../../../app.js"),
-    import("../../../infrastructure/persistence/file/file-market-research-repository.js"),
-    import("../../../infrastructure/persistence/file/file-subscription-repository.js"),
-    import("../../../infrastructure/persistence/file/file-user-repository.js"),
+    import("../../../infrastructure/persistence/mongo/mongoose-market-research-repository.js"),
+    import("../../../infrastructure/persistence/mongo/mongoose-subscription-repository.js"),
+    import("../../../infrastructure/persistence/mongo/mongoose-user-repository.js"),
     import("../../../services/subscription.js"),
     import("../../../tasks/handlers/market-research-initial.js"),
     import("../../../tasks/handlers/market-research-summary.js"),
   ]);
 
   const request = requestModule.default;
+  const mongoServer = await MongoMemoryServer.create();
+  const mongoUri = mongoServer.getUri();
+  const dbName = `mr-int-${randomUUID()}`;
 
-  const marketResearchRepository = createFileMarketResearchRepository({ dataDir: tempDir });
-  const subscriptionRepository = createFileSubscriptionRepository({ dataDir: tempDir });
-  const userRepository = createFileUserRepository({ dataDir: tempDir });
+  const marketResearchRepository = await createMongoMarketResearchRepository({
+    uri: mongoUri,
+    dbName,
+  });
+  const subscriptionRepository = await createMongoSubscriptionRepository({
+    uri: mongoUri,
+    dbName,
+  });
+  const userRepository = await createMongoUserRepository({
+    uri: mongoUri,
+    dbName,
+  });
   const subscriptionService = createSubscriptionService({ subscriptionRepository });
 
   const queuedInitialTasks = [];
@@ -74,6 +83,13 @@ export async function createIntegrationTestContext() {
       picture: "",
     });
     return userId;
+  }
+
+  async function setUserAdmin(userId, isAdmin = true) {
+    const user = await userRepository.updateUser(userId, { isAdmin });
+    if (!user) {
+      throw new Error(`User not found: ${userId}`);
+    }
   }
 
   async function createAuth(userId = "integration-user") {
@@ -135,8 +151,18 @@ export async function createIntegrationTestContext() {
     queuedInitialTasks,
     queuedSummaryTasks,
     createAuth,
+    seedUser,
+    setUserAdmin,
     runInitialTask,
     runSummaryTask,
-    cleanup: async () => fs.rm(tempDir, { recursive: true, force: true }),
+    cleanup: async () => {
+      const mongoose = (await import("mongoose")).default;
+      await Promise.all(
+        mongoose.connections
+          .filter((connection) => connection.readyState !== 0)
+          .map((connection) => connection.close()),
+      );
+      await mongoServer.stop();
+    },
   };
 }
