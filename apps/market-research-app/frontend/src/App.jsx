@@ -6,12 +6,24 @@ import { Toaster } from "./components/ui/toaster";
 import { useSocketStore } from "./store/useSocketStore";
 import { useAuthStore } from "./store/useAuthStore";
 import MarketResearchPage from "./pages/MarketResearchPage";
+import { LandingPage } from "./components/market-research/LandingPage";
 import { IdeaInputPage } from "./components/market-research/IdeaInputPage";
 import { AnalysisPage } from "./components/market-research/AnalysisPage";
 import { AnalysisSummaryPage } from "./components/market-research/AnalysisSummaryPage";
 import { ProfilePage } from "./components/market-research/ProfilePage";
 import { LoginPage } from "./components/market-research/LoginPage";
 import { AdminPage } from "./components/market-research/AdminPage";
+
+function getHomeRouteElement(authReady, userId) {
+  if (!authReady) return null;
+  if (userId) return <Navigate to="/profile" replace />;
+  return <LandingPage />;
+}
+
+function getFallbackRouteElement(authReady, userId) {
+  if (!authReady) return null;
+  return <Navigate to={userId ? "/profile" : "/"} replace />;
+}
 
 export default function App() {
   const [authReady, setAuthReady] = useState(false);
@@ -34,13 +46,16 @@ export default function App() {
     reconnectSocket();
   }, [authReady, reconnectSocket, userId]);
 
+  const homeRouteElement = getHomeRouteElement(authReady, userId);
+  const fallbackRouteElement = getFallbackRouteElement(authReady, userId);
+
   return (
     <ChakraProvider value={defaultSystem}>
       <BrowserRouter>
         <ScrollToTop />
         <Routes>
           <Route element={<MarketResearchPage />}>
-            <Route index element={<Navigate to="/profile" replace />} />
+            <Route index element={homeRouteElement} />
             <Route path="/analyze" element={<IdeaInputPage />} />
             <Route path="/analysis" element={<AnalysisPage />} />
             <Route path="/summary" element={<AnalysisSummaryPage />} />
@@ -49,7 +64,7 @@ export default function App() {
             <Route path="/admin/users/:userId" element={<AdminPage />} />
             <Route path="/admin/sessions/:sessionId" element={<AdminPage />} />
             <Route path="/login" element={<LoginPage />} />
-            <Route path="*" element={<Navigate to="/profile" replace />} />
+            <Route path="*" element={fallbackRouteElement} />
           </Route>
         </Routes>
         <Toaster />
