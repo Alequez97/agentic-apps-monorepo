@@ -66,10 +66,13 @@ export function IdeaInputCard() {
             onChange={(e) => setIdea(e.target.value)}
             placeholder="Describe your business idea..."
             minH={{ base: "100px", md: "120px" }}
-            fontSize="13px"
+            fontSize={{ base: "16px", md: "13px" }}
             borderColor={validationError ? "#f87171" : "#cbd5e1"}
             borderRadius="8px"
             disabled={isValidating}
+            sx={{
+              WebkitTextSizeAdjust: "100%",
+            }}
             _focus={{
               borderColor: validationError ? "#f87171" : "#6366f1",
               boxShadow: validationError
@@ -160,7 +163,11 @@ export function IdeaInputCard() {
           ) : (
             <>
               <Search size={16} strokeWidth={2.5} />
-              {user ? (hasEnoughCredits ? "Analyze Market" : "Need 2 credits") : "Sign in to analyze"}
+              {user
+                ? hasEnoughCredits
+                  ? "Analyze Market"
+                  : "Need 2 credits"
+                : "Sign in to analyze"}
             </>
           )}
         </Button>

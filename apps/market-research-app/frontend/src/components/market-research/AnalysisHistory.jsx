@@ -154,19 +154,30 @@ function HistoryRow({ entry, isLast, onOpen, onRestart, onDelete, isDeleting }) 
           <Button
             size="xs"
             variant="ghost"
-            h="30px"
-            minW="30px"
-            px={2}
+            h="auto"
+            minW="auto"
+            p={2.5}
             borderRadius="8px"
             color="#94a3b8"
             _hover={{ bg: "#fef2f2", color: "#dc2626" }}
+            _active={{ bg: "#fee2e2" }}
             isDisabled={isDeleting}
+            cursor="pointer"
+            sx={{
+              WebkitTapHighlightColor: "transparent",
+              touchAction: "manipulation",
+            }}
             onClick={(event) => {
               event.stopPropagation();
+              event.preventDefault();
               onDelete(entry);
             }}
+            onTouchEnd={(event) => {
+              event.stopPropagation();
+              event.preventDefault();
+            }}
           >
-            <Trash2 size={12} />
+            <Trash2 size={14} />
           </Button>
         </HStack>
       </VStack>
