@@ -47,6 +47,25 @@ export function CompetitorStatusBadge({ status }) {
     );
   }
 
+  if (status === COMPETITOR_STATUS.FAILED) {
+    return (
+      <Badge
+        display="inline-flex"
+        alignItems="center"
+        gap={1}
+        bg="#fee2e2"
+        color="#dc2626"
+        fontSize="10px"
+        fontWeight="600"
+        px={2}
+        py={0.5}
+        borderRadius="9999px"
+      >
+        ✕ Failed
+      </Badge>
+    );
+  }
+
   return (
     <Badge
       display="inline-flex"

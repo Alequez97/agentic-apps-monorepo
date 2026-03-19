@@ -62,26 +62,27 @@ export async function marketResearchSummaryHandler(
       );
       const profileById = new Map(allProfiles.map((c) => [c.id, c]));
 
-      // Validate every planned competitor has a real (non-stub) profile BEFORE charging
-      const incompleteIds = plannedIds.filter((id) => {
-        const p = profileById.get(id);
-        return !p || !p.description;
-      });
-      if (incompleteIds.length > 0) {
-        throw new Error(
-          `Competitor analysis incomplete for: ${incompleteIds.join(", ")}. Re-run to complete missing profiles.`,
-        );
-      }
-
+      // Merge competitor data
+      // - If profile exists with description → status: "done"
+      // - If profile missing → status: "failed" (task must have failed since summary only runs after all tasks complete)
       const mergedCompetitors = (report.competitors || []).map((stub) => {
         const full = profileById.get(stub.id);
-        return full ? { ...stub, ...full } : stub;
+
+        if (full && full.description) {
+          // Profile exists and is complete, merge it with status "done"
+          return { ...stub, ...full, status: "done" };
+        } else {
+          // No complete profile - task must have failed or was canceled
+          // Keep the stub information (id, name, url) but mark as failed
+          return { ...stub, status: "failed" };
+        }
       });
 
+      // Add any extra profiles that weren't in the original plan
       const mergedIds = new Set(mergedCompetitors.map((competitor) => competitor.id));
       for (const profile of allProfiles) {
         if (!mergedIds.has(profile.id)) {
-          mergedCompetitors.push(profile);
+          mergedCompetitors.push({ ...profile, status: "done" });
         }
       }
 

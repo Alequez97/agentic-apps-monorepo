@@ -601,9 +601,11 @@ export const useMarketResearchStore = create(
         })),
 
       _applyReport: (report) => {
+        // Map competitors preserving their status from the backend
         const competitors = (report?.competitors || []).map((c) => ({
           ...c,
-          status: COMPETITOR_STATUS.DONE,
+          // Use the status from the report - backend sets "done" or "failed"
+          status: c.status === "failed" ? COMPETITOR_STATUS.FAILED : COMPETITOR_STATUS.DONE,
         }));
         set({
           report,

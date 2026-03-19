@@ -1,11 +1,5 @@
 // Components
-export {
-  Navbar,
-  NavLogo,
-  AppNavbar,
-  NavAuthControls,
-  MarketResearchNavbar,
-} from "./Navbar";
+export { Navbar, NavLogo, AppNavbar, NavAuthControls, MarketResearchNavbar } from "./Navbar";
 export { SaveReportBanner } from "./SaveReportBanner";
 export { SummaryActionButtons } from "./SummaryActionButtons";
 export { HeroSection } from "./HeroSection";
@@ -19,7 +13,7 @@ export { IdeaInputCard } from "./IdeaInputCard";
 export { SignInNotice } from "./SignInNotice";
 export { InputStatsFooter } from "./InputStatsFooter";
 export { IdeaInputPage } from "./IdeaInputPage";
-export { CompetitorCard } from "./CompetitorCard";
+export { CompetitorCard } from "./competitor-card";
 export { CompetitorsGrid } from "./CompetitorsGrid";
 export { CompetitorDetails } from "./CompetitorDetails";
 export { ActivityEvent } from "./ActivityEvent";

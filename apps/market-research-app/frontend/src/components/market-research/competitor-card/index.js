@@ -1,0 +1,1 @@
+export { CompetitorCard } from "./CompetitorCard";

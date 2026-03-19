@@ -1,6 +1,6 @@
 import { Box, Grid, HStack, Text, VStack } from "@chakra-ui/react";
 import { useMarketResearchStore } from "../../store/useMarketResearchStore";
-import { CompetitorCard } from "./CompetitorCard";
+import { CompetitorCard } from "./competitor-card";
 
 const shimmerStyle = {
   "@keyframes shimmer": {
@@ -64,9 +64,7 @@ function SkeletonCard({ delay = 0 }) {
 export function CompetitorsGrid() {
   const competitors = useMarketResearchStore((s) => s.competitors);
   const isAnalyzing = useMarketResearchStore((s) => s.isAnalyzing);
-  const latestActivityEvent = useMarketResearchStore((s) =>
-    s.latestActivityEvent(),
-  );
+  const latestActivityEvent = useMarketResearchStore((s) => s.latestActivityEvent());
 
   if (competitors.length === 0) {
     if (isAnalyzing) {
@@ -112,12 +110,7 @@ export function CompetitorsGrid() {
                 animation: "bounce 1.2s ease-in-out 0.4s infinite",
               }}
             />
-            <Text
-              fontSize="11px"
-              color="#6366f1"
-              fontWeight="600"
-              letterSpacing="0.01em"
-            >
+            <Text fontSize="11px" color="#6366f1" fontWeight="600" letterSpacing="0.01em">
               Scanning the web for competitors...
             </Text>
           </HStack>
@@ -138,12 +131,7 @@ export function CompetitorsGrid() {
                 animation: "fadeSlideIn 0.3s ease",
               }}
             >
-              <Text
-                fontSize="11px"
-                color="#64748b"
-                fontWeight="500"
-                noOfLines={1}
-              >
+              <Text fontSize="11px" color="#64748b" fontWeight="500" noOfLines={1}>
                 <Text as="span" color="#6366f1" fontWeight="700" mr={1.5}>
                   {latestActivityEvent.agent ?? "Agent"}
                 </Text>
