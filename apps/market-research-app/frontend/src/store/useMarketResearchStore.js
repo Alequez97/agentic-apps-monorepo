@@ -108,6 +108,7 @@ export const useMarketResearchStore = create(
       competitors: [],
       activityEvents: [],
       selectedCompetitorId: null,
+      retryingCompetitorIds: new Set(),
       report: null,
       competitorTaskMap: {},
 
@@ -141,6 +142,7 @@ export const useMarketResearchStore = create(
           report: null,
           competitorTaskMap: {},
           selectedCompetitorId: null,
+          retryingCompetitorIds: new Set(),
         });
 
         try {
@@ -228,6 +230,7 @@ export const useMarketResearchStore = create(
           report: null,
           competitorTaskMap: {},
           selectedCompetitorId: null,
+          retryingCompetitorIds: new Set(),
         });
 
         try {
@@ -312,6 +315,7 @@ export const useMarketResearchStore = create(
           activityEvents: [],
           analysisStartedAt: null,
           selectedCompetitorId: null,
+          retryingCompetitorIds: new Set(),
           report: null,
           competitorTaskMap: {},
         });
@@ -486,24 +490,38 @@ export const useMarketResearchStore = create(
       },
 
       retryCompetitor: async (competitorId) => {
-        const { competitors } = get();
+        const { competitors, retryingCompetitorIds } = get();
         const competitor = competitors.find((c) => c.id === competitorId);
         if (!competitor || !competitor.taskId) {
           console.error(`Cannot retry competitor ${competitorId}: no taskId found`);
           return false;
         }
 
+        const newRetrying = new Set(retryingCompetitorIds);
+        newRetrying.add(competitorId);
+        set({ retryingCompetitorIds: newRetrying });
+
         try {
           await retryTask(competitor.taskId);
-          set((state) => ({
-            competitors: state.competitors.map((c) =>
-              c.id === competitorId ? { ...c, status: "analyzing", loadFailed: false } : c,
-            ),
-          }));
+          set((state) => {
+            const updatedRetrying = new Set(state.retryingCompetitorIds);
+            updatedRetrying.delete(competitorId);
+            return {
+              competitors: state.competitors.map((c) =>
+                c.id === competitorId ? { ...c, status: "analyzing", loadFailed: false } : c,
+              ),
+              retryingCompetitorIds: updatedRetrying,
+            };
+          });
           get()._syncSummaryStatus();
           return true;
         } catch (error) {
           console.error(`Failed to retry competitor ${competitorId}:`, error);
+          set((state) => {
+            const updatedRetrying = new Set(state.retryingCompetitorIds);
+            updatedRetrying.delete(competitorId);
+            return { retryingCompetitorIds: updatedRetrying };
+          });
           return false;
         }
       },
@@ -630,6 +648,7 @@ export const useMarketResearchStore = create(
           activityEvents: [],
           competitorTaskMap: {},
           selectedCompetitorId: null,
+          retryingCompetitorIds: new Set(),
           isAnalyzing: entry.status === ANALYSIS_STATUS.ANALYZING,
           isAnalysisComplete: false,
           summaryStatus:

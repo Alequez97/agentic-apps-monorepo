@@ -39,7 +39,10 @@ function normalizeUrl(url) {
 export function CompetitorDetails({ competitor, onBack }) {
   const loadCompetitorDetails = useMarketResearchStore((s) => s.loadCompetitorDetails);
   const retryCompetitor = useMarketResearchStore((s) => s.retryCompetitor);
+  const retryingCompetitorIds = useMarketResearchStore((s) => s.retryingCompetitorIds);
   const { details } = competitor;
+
+  const isRetrying = retryingCompetitorIds.has(competitor.id);
 
   useEffect(() => {
     if (!details && !competitor.loadFailed && competitor.status !== COMPETITOR_STATUS.ANALYZING) {
