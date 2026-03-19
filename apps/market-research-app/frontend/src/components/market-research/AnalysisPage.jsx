@@ -6,6 +6,7 @@ import { CompetitorsGrid } from "./CompetitorsGrid";
 import { ActivityFeed } from "./ActivityFeed";
 import { CompetitorDetails } from "./CompetitorDetails";
 import { MarketResearchSummaryPanel } from "./MarketResearchSummaryPanel";
+import { COMPETITOR_STATUS } from "./constants";
 
 function ProgressBar() {
   const competitors = useMarketResearchStore((s) => s.competitors);

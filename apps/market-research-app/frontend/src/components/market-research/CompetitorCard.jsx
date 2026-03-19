@@ -2,6 +2,7 @@ import { Badge, Box, HStack, Skeleton, Text, VStack } from "@chakra-ui/react";
 import { useMarketResearchStore } from "../../store/useMarketResearchStore";
 import { CompetitorLogo } from "./CompetitorLogo";
 import { CompetitorStatusBadge } from "./CompetitorStatusBadge";
+import { COMPETITOR_STATUS } from "./constants";
 
 function CompetitorMetaRow({ label, value, tone = "#0f172a", suffix = null }) {
   return (
